@@ -1,4 +1,4 @@
-open QtDef
+open Def
 open Rect
 
 type space_behavior = Preferred

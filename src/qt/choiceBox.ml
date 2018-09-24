@@ -1,8 +1,8 @@
-open QtDef
-open QtTextBox
-open QtLayout
-open QtLabel
-open QtScroll
+open Def
+open TextBox
+open Layout
+open Label
+open Scroll
 
 let cbIdxToKey, cbKeyToIdx, cbStrings = 
     let open Util in

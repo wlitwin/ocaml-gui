@@ -1,8 +1,8 @@
-open QtDef
-open QtLabel
-open QtTextBox
-open QtLayout
-open QtSpacer
+open Def
+open Label
+open TextBox
+open Layout
+open Spacer
 
 class textBoxWithLabel app labelName =
     let tbox = new textBox app in

@@ -130,7 +130,6 @@ let fix_keycode key = (*Util.id key *)
 
 let keypress app w eid : bool =
     let key = fix_keycode (GdkEvent.Key.keyval eid) in
-    (*G.key_press gui_state key; *)
     app#addEvent (KeyPress key);
     Printf.printf "Key Pressed: %d (0x%x)\n" key key; flush stdout;
     w#present();
@@ -141,7 +140,6 @@ let keyrelease app w eid : bool =
     let key = fix_keycode (GdkEvent.Key.keyval eid) in
     Printf.printf "Key Released: %d (0x%x)\n" key key; flush stdout;
     app#addEvent (KeyRelease key);
-    (*G.key_release gui_state key;*)
     w#present();
     true
 ;;

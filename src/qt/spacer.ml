@@ -1,4 +1,4 @@
-open QtDef
+open Def
 
 class spacer app size =
 object(self)

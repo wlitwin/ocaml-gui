@@ -1,4 +1,4 @@
-open QtDef
+open Def
 open Rect
 
 class textBox app = object(self)

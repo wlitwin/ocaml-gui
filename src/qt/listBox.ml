@@ -1,7 +1,7 @@
-open QtDef
-open QtLabel
-open QtScroll
-open QtLayout
+open Def
+open Label
+open Scroll
+open Layout
 
 class listBox app strs =
     let ctrl = new control app in

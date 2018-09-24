@@ -1,4 +1,4 @@
-open QtTextBox
+open TextBox
 
 class intBox app = object(self)
     inherit textBox app as super
