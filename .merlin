@@ -1,0 +1,7 @@
+S src
+S src/qt
+
+B _build/src
+B _build/src/qt
+
+PKG cairo2 cairo2.lablgtk2 lablgtk2 lablgtk2-extras ppx_sexp_conv sexplib ppx_deriving.show extlib ocamlgraph
