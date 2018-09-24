@@ -1,0 +1,17 @@
+opam-version: "1.2"
+name: "ocaml-gui"
+version: "~unknown"
+maintainer: "Walter Litwinczyk <walter@litwinczyk.com>"
+authors: "Walter Litwinczyk <walter@litwinczyk.com>"
+license: "MIT"
+bug-reports: "https://laserturtle.net"
+homepage: "https://laserturtle.net"
+dev-repo: "https://laserturtle.net"
+build: [
+  [make]
+]
+install: []
+remove: ["ocamlfind" "remove" "ocaml-gui"]
+depends: [
+  "ocamlfind" {build}
+]
