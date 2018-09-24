@@ -108,7 +108,8 @@ class control app =
             Cairo.rectangle cr rect.x rect.y rect.w rect.h;
             Cairo.clip cr;
             Cairo.move_to cr rect.x rect.y;
-            Cairo.set_source_rgba cr 1. 1. 1. 1.;
+            let bgColor = style#bgColor in
+            Cairo.set_source_rgba cr bgColor.r bgColor.g bgColor.b bgColor.a;
             Cairo.rectangle cr rect.x rect.y rect.w rect.h;
             Cairo.fill cr;
             self#paint cr;
@@ -120,10 +121,10 @@ class control app =
             | None -> ()
             end;
             (*Printf.printf "PAINTIN TEXT %f %f %f %f\n" rect.x rect.y rect.w rect.h;*)
-            if self#style#borderColor <> Rect.none then begin
-                let bc = self#style#borderColor in
+            if style#borderColor <> Rect.none then begin
+                let bc = style#borderColor in
                 Cairo.set_source_rgba cr bc.r bc.g bc.b bc.a;
-                Cairo.set_line_width cr self#style#borderSize;
+                Cairo.set_line_width cr style#borderSize;
                 Cairo.rectangle cr rect.x rect.y rect.w rect.h;
                 Cairo.stroke cr;
             end;
