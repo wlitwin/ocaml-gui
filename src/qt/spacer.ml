@@ -1,4 +1,4 @@
-open Def
+open Control
 
 class spacer app size =
 object(self)

@@ -1,5 +1,5 @@
-open Def
 open Rect
+open Control
 
 type space_behavior = Preferred
                     | Equal

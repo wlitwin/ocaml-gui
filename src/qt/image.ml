@@ -1,8 +1,9 @@
-open QtDef
-open GrammarTypes
+open Control
 
 module CI = Cairo.Image
 module CP = Cairo.Pattern
+
+module ByteArray = ByteArray.ByteArray
 
 class image app =
 object(self)

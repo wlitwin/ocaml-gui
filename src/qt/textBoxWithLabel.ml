@@ -1,8 +1,9 @@
-open Def
 open Label
 open TextBox
 open Layout
 open Spacer
+open Control
+open Event
 
 class textBoxWithLabel app labelName =
     let tbox = new textBox app in

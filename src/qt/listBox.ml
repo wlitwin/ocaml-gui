@@ -1,7 +1,7 @@
-open Def
 open Label
 open Scroll
 open Layout
+open Control
 
 class listBox app strs =
     let ctrl = new control app in

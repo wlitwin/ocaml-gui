@@ -1,8 +1,8 @@
-open Def
 open TextBox
 open Layout
 open Label
 open Scroll
+open Control
 
 let cbIdxToKey, cbKeyToIdx, cbStrings = 
     let open Util in

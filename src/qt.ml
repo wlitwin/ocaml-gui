@@ -1,4 +1,5 @@
 include Def
+include Control
 open Rect
 open Scroll
 open Label
@@ -9,3 +10,5 @@ open ChoiceBox
 open ListBox
 open Spacer
 open TextBoxWithLabel
+open Graph
+open Image

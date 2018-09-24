@@ -1,5 +1,5 @@
-open Def
 open Rect
+open Control
 
 class textBox app = object(self)
     inherit control app as super

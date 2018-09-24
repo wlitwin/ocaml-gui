@@ -1,5 +1,5 @@
-open Def
 open Rect
+open Control
 
 class label app text = object(self)
     inherit control app as super

@@ -1,6 +1,5 @@
-open QtDef
-open QtLabel
-open QtScroll
+open Label
+open Scroll
 open GraphTypes
 
 module HV = Dot.XDotInput.HV
