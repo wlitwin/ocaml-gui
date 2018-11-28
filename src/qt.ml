@@ -10,5 +10,9 @@ open ChoiceBox
 open ListBox
 open Spacer
 open TextBoxWithLabel
-open Graph
+(*open Graph*)
 open Image
+open Keys
+module M = Mixins
+module C = NewControl
+module L = LayoutModule

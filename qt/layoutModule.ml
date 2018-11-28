@@ -1,0 +1,66 @@
+open Mixins
+
+class virtual linearLayout =
+object
+    inherit layout
+
+    val items : layoutable DynArray.t = DynArray.make 1
+
+    method addLayoutable l = DynArray.add items l
+
+    method removeLayoutable id =
+        DynArray.filter (fun l -> l#id = id) items
+
+    method items = DynArray.to_list items
+end
+
+class virtual gridLayout =
+object
+
+end
+
+class horizontalLayout =
+object
+    inherit linearLayout
+
+    method layout rect =
+        let open Rect in
+        (* Get ratios of items *)
+        let get = DynArray.get in
+        let sizes = DynArray.map (fun l -> l#preferredSize.w) items in
+        let sum   = DynArray.fold_left ( +. ) 0. sizes in
+        let offset = ref rect.x in
+        DynArray.iteri (fun idx item ->
+            let ratio = (get sizes idx) /. sum in
+            let width = ratio *. rect.w in
+            item#resize {rect with x = !offset; w = width};
+            offset := !offset +. width;
+        ) items
+end
+
+class verticalLayout =
+object
+    inherit linearLayout
+
+    method layout rect =
+        let open Rect in
+        (* Get ratios of items *)
+        let get = DynArray.get in
+        let sizes = DynArray.map (fun l -> l#preferredSize.h) items in
+        let sum   = DynArray.fold_left ( +. ) 0. sizes in
+        let offset = ref rect.y in
+        DynArray.iteri (fun idx item ->
+            let ratio = (get sizes idx) /. sum in
+            let height = ratio *. rect.h in
+            item#resize {rect with y = !offset; h = height};
+            offset := !offset +. height;
+        ) items
+end
+
+class flowLayout =
+object
+    inherit linearLayout
+
+    method layout r = ()
+end
+
