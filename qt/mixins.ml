@@ -43,21 +43,21 @@ type event += Click of (mouse_button * pos)
             | Leave of pos
 
 class virtual handlesMouse =
-object
+object(self)
     inherit handlesEvent
 
-    val mutable onClick : (mouse_button * pos) -> unit = ignore
-    val mutable onEnter : pos -> unit = ignore
-    val mutable onLeave : pos -> unit = ignore
-    val mutable onMove  : pos -> unit = ignore
+    method onClick (mouse_button, pos) = ()
+    method onEnter pos = ()
+    method onLeave pos = ()
+    method onMove pos = ()
 
     initializer
         eventHandlers <-
             (function
-             | Click (btn, pos) -> onClick (btn, pos)
-             | Move pos -> onMove pos
-             | Enter pos -> onEnter pos
-             | Leave pos -> onLeave pos
+             | Click (btn, pos) -> self#onClick (btn, pos)
+             | Move pos -> self#onMove pos
+             | Enter pos -> self#onEnter pos
+             | Leave pos -> self#onLeave pos
              | _ -> ()) :: eventHandlers
 end
 
