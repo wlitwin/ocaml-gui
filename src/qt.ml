@@ -14,5 +14,5 @@ open TextBoxWithLabel
 open Image
 open Keys
 module M = Mixins
-module C = NewControl
+module W = Widget
 module L = LayoutModule

@@ -12,7 +12,7 @@ class basicWidget = object(self)
     inherit layoutable
     inherit drawable
 
-    method preferredSize = {w=20.; h=20.}
+    method preferredSize = self#size
 
     method fillBgColor cr =
         let bgColor = style#bgColor in
