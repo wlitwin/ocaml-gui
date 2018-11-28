@@ -24,10 +24,13 @@ class basicWidget = object(self)
         Cairo.rectangle cr rect.x rect.y rect.w rect.h;
         Cairo.clip cr;
 
+    method paint cr = ()
+
     method draw cr =
         Cairo.save cr;
         self#clipDrawArea cr;
         self#fillBgColor cr;
         Cairo.move_to cr rect.x rect.y;
+        self#paint cr;
         Cairo.restore cr;
 end

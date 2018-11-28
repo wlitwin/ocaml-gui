@@ -1,5 +1,10 @@
 let ( % ) f g x = f (g x)
 
+let dummy_ctx =
+    let module CI = Cairo.Image in
+    let img = CI.create CI.ARGB32 1 1 in
+    Cairo.create img
+
 let flip f x y = f y x
 
 let getChar () =

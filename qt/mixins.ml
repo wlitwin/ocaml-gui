@@ -65,17 +65,17 @@ type event += KeyDown of Keys.key
             | KeyUp of Keys.key
 
 class virtual handlesKeyboard =
-object
+object(self)
     inherit handlesEvent
 
-    val mutable onKeyDown : Keys.key -> unit = ignore
-    val mutable onKeyUp   : Keys.key -> unit = ignore
+    method onKeyDown (key : Keys.key) : unit = ()
+    method onKeyUp (key : Keys.key) : unit = ()
 
     initializer
         eventHandlers <-
             (function
-             | KeyDown key -> onKeyDown key
-             | KeyUp key -> onKeyUp key
+             | KeyDown key -> self#onKeyDown key
+             | KeyUp key -> self#onKeyUp key
              | _ -> ()) :: eventHandlers
 end
 

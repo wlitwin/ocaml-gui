@@ -6,6 +6,7 @@ type key =
     | Bang | At | Pound | Dollar | Percent | Caret
     | Ampersand | Star | LParen | RParen | Minus
     | Underscore | Plus | Equals | LShift | RShift
+    | Backspace | LControl
 
 let key_code = function
     | A -> 97  | B -> 98  | C -> 99  | D -> 100 | E -> 101
