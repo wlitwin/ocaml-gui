@@ -29,7 +29,7 @@ object
     (*val mutable virtual eventFilters*)
 
     method postEvent evt =
-        List.iter (fun f -> f evt) eventHandlers
+        List.iter ~f:(fun f -> f evt) eventHandlers
 end
 
 type mouse_button =

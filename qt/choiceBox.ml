@@ -10,11 +10,11 @@ let cbIdxToKey, cbKeyToIdx, cbStrings =
         0x75(*u*); 0x69(*i*); 0x6f(*o*); 0x70(*p*); 0x68(*h*);
         0x6a(*j*); 0x6b(*k*); 0x6c(*l*); 0x6e(*n*); 0x6d(*m*);
     ] in
-    let assoc = keys |> List.mapi Util.pair in
-    let assoc_flip = List.map (fun (a, b) -> (b, a)) assoc in
+    let assoc = keys |> List.mapi ~f:Util.pair in
+    let assoc_flip = List.map ~f:(fun (a, b) -> (b, a)) assoc in
     Util.hash_of_list assoc,
     Util.hash_of_list assoc_flip,
-    keys |> Array.of_list |> Array.map (String.make 1 % Char.chr)
+    keys |> Array.of_list |> Array.map ~f:(String.make 1 % Char.of_int_exn)
 ;;
 
 (* TODO - display something when there's no choices *)
@@ -23,7 +23,7 @@ class choiceBox app choices ?title vboxType =
     let ctrl = new control app in
     let vbox = new vboxLayout ctrl in
     let scroll = 
-        List.iter (fun str ->
+        List.iter ~f:(fun str ->
             vbox#addControlWith (new label app str :> control) vboxType;
         ) choices;
         ctrl#setLayout (vbox :> layout);
@@ -54,7 +54,7 @@ object(self)
         self#reset;
         self#updateChoices;
         let sz = (layout |> Util.some)#sizeHintNoCr in
-        Printf.printf "\n\n SIZE HINT %f %f \n" sz.w sz.h;
+        Stdio.printf "\n\n SIZE HINT %f %f \n" sz.w sz.h;
         initialSizeHint <- sz
 
         (*
@@ -64,19 +64,19 @@ object(self)
         *)
 
     method private updateChoices =
-        let terms = String.split_on_char ' ' tbox#text in
+        let terms = String.split ~on:' ' tbox#text in
         vbox#removeAllChildren;
         choices
-        |> List.mapi (fun i item -> (i, item))
-        |> List.filter (fun (_, item) -> Util.strContainsAllCI item terms)
+        |> List.mapi ~f:(fun i item -> (i, item))
+        |> List.filter ~f:(fun (_, item) -> Util.strContainsAllCI item terms)
         |> Util.tee (fun lst ->
                 currentChoices <- lst;
                 currentChoicesLen <- List.length lst
         )
-        |> List.iter (fun (_, item) -> vbox#addControlWith (new label app item :> control) vboxType)
+        |> List.iter ~f:(fun (_, item) -> vbox#addControlWith (new label app item :> control) vboxType)
 
-    method private keyToIndex = Hashtbl.find cbKeyToIdx
-    method private indexToKey = Hashtbl.find cbIdxToKey
+    method private keyToIndex = Hashtbl.find_exn cbKeyToIdx
+    method private indexToKey = Hashtbl.find_exn cbIdxToKey
     method private isInKeyMap key = Hashtbl.mem cbKeyToIdx key
     method private indexToStr idx = cbStrings.(idx)
 
@@ -92,7 +92,7 @@ object(self)
         | key when (app#ctrlDown && self#isInKeyMap key) ->
                 let idx = self#keyToIndex key in
                 if idx < currentChoicesLen then
-                    choiceCallback (List.nth currentChoices idx)
+                    choiceCallback (List.nth_exn currentChoices idx)
         | key ->
                 tbox#keyPress key;
                 (* Filter the list by the text box *)
@@ -108,18 +108,18 @@ object(self)
         let len = currentChoicesLen in
         if app#ctrlDown && len > 0 then begin
             let vsz = vbox#sizeHint cr in
-            let divH = vsz.h /. float len in
+            let divH = vsz.h /. (Float.of_int len) in
             let r = ctrl#geom in
             Cairo.set_font_size cr (divH *. 0.9);
             Cairo.select_font_face cr "Ubuntu mono";
             let fe = Cairo.font_extents cr in
             let w = fe.Cairo.max_x_advance *. 1.1 in
-            let h = min (fe.Cairo.ascent +. fe.Cairo.descent) divH in
+            let h = Float.(min (fe.Cairo.ascent +. fe.Cairo.descent) divH) in
             let ox = r.x +. scroll#geom.x
             and oy = r.y +. scroll#geom.y in
             let maxIdx = (min len (Array.length cbStrings)) - 1 in
             for i=0 to maxIdx do
-                let oy = oy +. (divH *. float i) in
+                let oy = oy +. (divH *. Float.of_int i) in
                 Cairo.set_source_rgba cr 0. 0. 0. 1.;
                 Cairo.rectangle cr (ox +. r.w -. w) oy w h;
                 Cairo.fill cr;

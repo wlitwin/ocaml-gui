@@ -30,7 +30,7 @@ class hboxLayout parent = object(self)
         let w, h =
             DynArray.fold_left (fun (w, h) c ->
                 let sz = c.control#sizeHint cr in
-                (sz.w +. w, max sz.h h)
+                Float.(sz.w +. w, max sz.h h)
             ) (0., 0.) children
         in
         {w; h}
@@ -39,20 +39,20 @@ class hboxLayout parent = object(self)
 
     method private equalCount =
         DynArray.fold_left (fun cnt info ->
-            if info.sb = Equal then cnt + 1 else cnt
+            if Poly.(=) info.sb Equal then cnt + 1 else cnt
         ) 0 children
 
     method private firstPass (cr : Cairo.context) : float =
         let eql_count = self#equalCount in
         let psize = children
             |> DynArray.copy
-            |> Util.(%) Util.tee DynArray.filter (fun info -> info.sb = Preferred)
+            |> Util.(%) Util.tee DynArray.filter (fun info -> Poly.(=) info.sb Preferred)
             |> DynArray.fold_left (fun width info ->
                 let ctrlSize = info.control#sizeHint cr in
                 width +. ctrlSize.w
             ) 0. in
         (* Output how much goes to the preferred vs the equals *)
-        (parent#geom.w -. psize) /. float eql_count
+        (parent#geom.w -. psize) /. (Float.of_int eql_count)
 
     method layout cr =
         let rect : rect = parent#geom in
@@ -94,7 +94,7 @@ class vboxLayout (parent : control) = object(self)
         let w, h =
             DynArray.fold_left (fun (w, h) c ->
                 let sz = c.control#sizeHint cr in
-                (max sz.w w, sz.h +. h)
+                Float.(max sz.w w, sz.h +. h)
             ) (0., 0.) children
         in
         {w; h}
@@ -103,20 +103,20 @@ class vboxLayout (parent : control) = object(self)
 
     method private equalCount =
         DynArray.fold_left (fun cnt info ->
-            if info.sb = Equal then cnt + 1 else cnt
+            if Poly.(=) info.sb Equal then cnt + 1 else cnt
         ) 0 children
 
     method private firstPass (cr : Cairo.context) : float =
         let eql_count = self#equalCount in
         let psize = children
             |> DynArray.copy
-            |> Util.(%) Util.tee DynArray.filter (fun info -> info.sb = Preferred)
+            |> Util.(%) Util.tee DynArray.filter (fun info -> Poly.(=) info.sb Preferred)
             |> DynArray.fold_left (fun height info ->
                 let ctrlSize = info.control#sizeHint cr in
                 height +. ctrlSize.h
             ) 0. in
         (* Output how much goes to the preferred vs the equals *)
-        (parent#geom.h -. psize) /. float eql_count
+        (parent#geom.h -. psize) /. (Float.of_int eql_count)
 
     method layout cr =
         let rect : rect = parent#geom in
@@ -154,7 +154,7 @@ class stackLayout (parent : control) = object(self)
         DynArray.add items control
 
     method removeControl ctrl =
-        DynArray.filter (fun c -> not (c == ctrl)) items;
+        DynArray.filter (fun c -> not (phys_equal c ctrl)) items;
         self#setIndex curIndex;
 
     method removeAt idx =
@@ -166,7 +166,7 @@ class stackLayout (parent : control) = object(self)
         self#setIndex curIndex
 
     method setIndex idx =
-        curIndex <- Util.clamp idx 0 (self#len - 1)
+        curIndex <- Util.clampi idx 0 (self#len - 1)
 
     method curIndex = curIndex
 

@@ -2,7 +2,7 @@ open Rect
 open Style
 open Simple_queue
 open Control
-open Event
+open Events
 
 type anchors = {
     tl : bool;
@@ -30,19 +30,17 @@ let expose app drawing_area ev =
     let allocation = drawing_area#misc#allocation in
     Util.timeit "draw" (fun _ ->
         try
-            let w = float allocation.Gtk.width
-            and h = float allocation.Gtk.height in
+            let w = Float.of_int allocation.Gtk.width
+            and h = Float.of_int allocation.Gtk.height in
             app#resizeViewport cr Rect.{w;h};
             (*app#addEvent (Qt.Resize Rect.{w;h});*)
             app#addEvent (Layout cr);
             app#addEvent (Paint cr);
             app#dispatch;
         with e ->
-            print_endline "==================== EXCEPTION OCCURRED ==================";
-            print_endline (Printexc.to_string e);
-            Printexc.print_backtrace stdout;
-            flush stdout;
-            flush stderr;
+            Stdio.print_endline "==================== EXCEPTION OCCURRED ==================";
+            Stdio.print_endline (Exn.to_string e);
+            Backtrace.get() |> Backtrace.to_string |> Stdio.printf "%s\n%!"
     );
     true
 ;;
@@ -60,14 +58,14 @@ let fix_keycode key = (*Util.id key *)
 let keypress app w eid : bool =
     let key = fix_keycode (GdkEvent.Key.keyval eid) in
     app#addEvent (KeyPress key);
-    Printf.printf "Key Pressed: %d (0x%x)\n" key key; flush stdout;
+    Stdio.printf "Key Pressed: %d (0x%x)\n%!" key key;
     w#present();
     true
 ;;
 
 let keyrelease app w eid : bool =
     let key = fix_keycode (GdkEvent.Key.keyval eid) in
-    Printf.printf "Key Released: %d (0x%x)\n" key key; flush stdout;
+    Stdio.printf "Key Released: %d (0x%x)\n%!" key key;
     app#addEvent (KeyRelease key);
     w#present();
     true
@@ -75,7 +73,7 @@ let keyrelease app w eid : bool =
 
 class application = object(self)
     (* concept of z-order - Last window is top-most *)
-    val windows : (window_handle, control * window_info) Hashtbl.t = Hashtbl.create 10
+    val windows : (window_handle, control * window_info) Hashtbl.t = Hashtbl.Poly.create()
     (* Index (len - 1) == topmost control, list is in z-order *)
     val wnds : (control * window_info) DynArray.t = DynArray.create()
     val eventQueue : event queue = new queue
@@ -94,7 +92,7 @@ class application = object(self)
 
     method openWindow (rect : rect) (control : control) (window_info : window_info) : window_handle =
         nextId <- nextId + 1;
-        Hashtbl.replace windows nextId (control, window_info);
+        Hashtbl.set windows nextId (control, window_info);
         control#setId nextId;
         control#setGeometry rect;
         DynArray.add wnds (control, window_info);
@@ -105,11 +103,10 @@ class application = object(self)
         DynArray.filter (fun (ctrl, _) -> ctrl#id <> handle) wnds
 
     method private normalizeKey (key : int) =
-        if shiftDown then
-            try key |> Char.chr |> Char.lowercase_ascii |> Char.code
-            with _ -> key
-        else
-            key
+        match shiftDown with
+        | true -> key |> Char.of_int_exn |> Char.lowercase |> Char.to_int
+        | false -> key
+        | exception _ -> key
 
     method addEvent event =
         (* Work around GTK's weird key handling *)
@@ -123,9 +120,9 @@ class application = object(self)
     method printQueue =
         match eventQueue#head with
         | Some head ->
-            Printf.printf "QUEUE LENGTH %d\n" eventQueue#length;
+            Stdio.printf "QUEUE LENGTH %d\n" eventQueue#length;
             Dllist.iter (fun it ->
-                Printf.printf " == %s\n" (str_of_event it)
+                Stdio.printf " == %s\n" (str_of_event it)
             ) head
         | None -> ()
 
@@ -136,7 +133,7 @@ class application = object(self)
          * their info *)
         (* TODO - come up with better types of resizing *)
         viewportSize <- size;
-        Hashtbl.iter (fun _ (wnd, info : control * window_info) ->
+        Hashtbl.iter ~f:(fun (wnd, info : control * window_info) ->
             if info.relative then begin
                 let r : rect = wnd#geom in
                 let dx = size.w /. viewport.w

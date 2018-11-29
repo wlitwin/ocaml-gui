@@ -1,5 +1,5 @@
 open Rect
-open Event
+open Events
 open Style
 
 type window_handle = int
@@ -25,19 +25,19 @@ class control app =
             event_filter_id
 
         method removeEventFilter id =
-            event_filters <- List.filter (fun (eid, _) -> eid <> id) event_filters
+            event_filters <- List.filter ~f:(fun (eid, _) -> eid <> id) event_filters
 
         method shortcut (keys : int list) = ()
 
         method style = style
 
         method keyPress (key : int) : unit =
-            if not (List.mem key key_state) then
+            if not (List.mem ~equal:Poly.(=) key_state key) then
                 key_state <- key :: key_state;
             self#shortcut key_state
 
         method keyRelease (key : int) : unit =
-            key_state <- List.filter (fun k -> k <> key) key_state
+            key_state <- List.filter ~f:(fun k -> k <> key) key_state
 
         method isFocused = is_focused
         method setFocus focused = is_focused <- focused
@@ -49,7 +49,7 @@ class control app =
             self#setGeometry {rect with x=pos.x; y=pos.y}
 
         method sendEventToFilters (event : event) =
-            List.exists (fun (_, f) -> f event) event_filters
+            List.exists ~f:(fun (_, f) -> f event) event_filters
 
         method event (event : event) =
             let handled = self#sendEventToFilters event in
@@ -121,7 +121,7 @@ class control app =
             | None -> ()
             end;
             (*Printf.printf "PAINTIN TEXT %f %f %f %f\n" rect.x rect.y rect.w rect.h;*)
-            if style#borderColor <> Rect.none then begin
+            if Poly.(<>) style#borderColor Rect.none then begin
                 let bc = style#borderColor in
                 Cairo.set_source_rgba cr bc.r bc.g bc.b bc.a;
                 Cairo.set_line_width cr style#borderSize;

@@ -48,17 +48,17 @@ let rect_of_aabb (a : aabb) : rect = {
 }
 
 let aabb_intersect a1 a2 = {
-    x1 = max a1.x1 a2.x1;
-    y1 = max a1.y1 a2.y1;
-    x2 = min a1.x2 a2.x2;
-    y2 = min a1.y2 a2.y2;
+    x1 = Float.max a1.x1 a2.x1;
+    y1 = Float.max a1.y1 a2.y1;
+    x2 = Float.min a1.x2 a2.x2;
+    y2 = Float.min a1.y2 a2.y2;
 }
 
 let aabb_union a1 a2 = {
-    x1 = min a1.x1 a2.x1;
-    y1 = min a1.y1 a2.y1;
-    x2 = max a1.x2 a2.x2;
-    y2 = max a1.y2 a2.y2;
+    x1 = Float.min a1.x1 a2.x1;
+    y1 = Float.min a1.y1 a2.y1;
+    x2 = Float.max a1.x2 a2.x2;
+    y2 = Float.max a1.y2 a2.y2;
 }
 
 let union r1 r2 =
@@ -75,6 +75,7 @@ let intersection r1 r2 =
 
 (* Is r1 inside r2? *)
 let aabb_inside a b =
+    let open Float in
     a.x1 >= b.x1 && a.x2 <= b.x2
     && a.y1 >= b.y1 && a.y2 <= b.y2
 
@@ -93,13 +94,13 @@ type size = {
 }
 
 let max_size (s1 : size) (s2 : size) : size = {
-    w = max s1.w s2.w;
-    h = max s1.h s2.h;
+    w = Float.max s1.w s2.w;
+    h = Float.max s1.h s2.h;
 }
 
 let min_size (s1 : size) (s2 : size) : size = {
-    w = min s1.w s2.w;
-    h = min s1.h s2.h;
+    w = Float.min s1.w s2.w;
+    h = Float.min s1.h s2.h;
 }
 
 let sub a b = {
@@ -109,7 +110,7 @@ let sub a b = {
 
 let dot a b = a.x*.b.x +. a.y*.b.y
 
-let len v = sqrt (dot v v)
+let len v = Float.sqrt (dot v v)
 
 let zero_size : size = {
     w=0.; h=0.;

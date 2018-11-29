@@ -18,8 +18,8 @@ class textBox app = object(self)
         | 0xffe3 (* left control *) -> controlDown <- true
         | 0xff08 (*backspace*) -> text <- Util.strLeft text
         | ch -> try
-            match Char.chr ch with
-            | ' ' .. '~' when keyFilter key -> text <- text ^ String.make 1 (Char.chr ch)
+            match Char.of_int ch with
+            | Some (' ' .. '~' as ch) when keyFilter key -> text <- text ^ String.make 1 ch
             | _ -> ()
         with _ -> ()
 
@@ -44,12 +44,13 @@ class textBox app = object(self)
     method text = text
 
     method sizeHint cr =
-        if text = "" then
+        if String.(=) text "" then
             self#measureText cr "default_size"
         else
             self#measureText cr text
 
     method paint cr =
+        let open Float in
         (*Printf.printf "PAINTIN TEXT %f %f %f %f %s\n" rect.x rect.y rect.w rect.h text;*)
         Cairo.select_font_face cr font ~weight;
         Cairo.set_font_size cr fontSize;

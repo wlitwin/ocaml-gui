@@ -3,7 +3,7 @@ open TextBox
 open Layout
 open Spacer
 open Control
-open Event
+open Events
 
 class textBoxWithLabel app labelName =
     let tbox = new textBox app in

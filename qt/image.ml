@@ -26,15 +26,16 @@ object(self)
     method setScale s = scaleImage <- s
 
     method! sizeHint cr = {
-        w=float (CI.get_width cimg) *. scaleImage;
-        h=float (CI.get_height cimg) *. scaleImage;
+        w=Float.(of_int (CI.get_width cimg) *. scaleImage);
+        h=Float.(of_int (CI.get_height cimg) *. scaleImage);
     }
 
     method! paint cr =
-        let imgh = float (CI.get_height cimg) in
-        let imgw = float (CI.get_width cimg) in
+        let imgh = Float.of_int (CI.get_height cimg) in
+        let imgw = Float.of_int (CI.get_width cimg) in
         let scaleX, scaleY =
             if keepAspectRatio then begin
+                let open Float in
                 let scale =
                     if rect.w < rect.h
                     then rect.w /. imgw
@@ -44,7 +45,7 @@ object(self)
             end else
                 rect.w /. imgw, rect.h /. imgh
         in
-        Printf.printf "PAINTING %f %f %f %f - Scale is %f %f\n" rect.x rect.y rect.w rect.h scaleX scaleY;
+        Stdio.printf "PAINTING %f %f %f %f - Scale is %f %f\n" rect.x rect.y rect.w rect.h scaleX scaleY;
         let pat = CP.create_for_surface cimg in
         CP.set_filter pat filter;
         Cairo.translate cr rect.x rect.y;

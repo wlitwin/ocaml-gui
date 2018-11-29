@@ -22,6 +22,7 @@ class scrollBar app scrollType = object(self)
     method setRatio new_ratio = ratio <- new_ratio
 
     method private paintVertical cr =
+        let open Float in
         let barHeight = min (ratio *. rect.h) rect.h in
         Cairo.set_source_rgba cr 0. 0. 0. 1.;
         let y = rect.y +. pos *. (rect.h -. barHeight) in
@@ -29,6 +30,7 @@ class scrollBar app scrollType = object(self)
         Cairo.fill cr
 
     method private paintHorizontal cr =
+        let open Float in
         let barWidth  = min (ratio *. rect.w) rect.w in
         Cairo.set_source_rgba cr 0. 0. 0. 1.;
         let x = rect.x +. pos *. (rect.w -. barWidth) in
@@ -36,6 +38,7 @@ class scrollBar app scrollType = object(self)
         Cairo.fill cr
 
     method! beginPaint cr =
+        let open Float in
         if ratio < 1. then super#beginPaint cr
 
     method! paint cr =
@@ -63,6 +66,7 @@ object(self)
         cont <- c
 
     method relayout cr =
+        let open Float in
         let sz = cont#sizeHint cr in
         let w = max rect.w sz.w
         and h = max rect.h sz.h in
@@ -77,16 +81,17 @@ object(self)
         horzScroller#setRatio (rect.w /. w);
 
     method ensureVisible (region : rect) =
+        let open Float in
         let cgeom = cont#geom in
         let r = Rect.intersection region cgeom in
         let ox = self#offsetX in
         let oy = self#offsetY in
         let v = { self#geom with x=ox; y=oy; } in
         if not (Rect.inside r v) then begin
-            let oy1 = abs_float ((r.y +. r.h) -. (v.y +. v.h))
-            and oy2 = abs_float (v.y -. r.y)
-            and ox1 = abs_float ((r.x +. r.w) -. (v.x +. v.w))
-            and ox2 = abs_float (v.x -. r.x) in
+            let oy1 = Float.abs ((r.y +. r.h) -. (v.y +. v.h))
+            and oy2 = Float.abs (v.y -. r.y)
+            and ox1 = Float.abs ((r.x +. r.w) -. (v.x +. v.w))
+            and ox2 = Float.abs (v.x -. r.x) in
             let vdenom = max (cont#geom.h -. self#geom.h) 1. in
             let wdenom = max (cont#geom.w -. self#geom.w) 1. in
             let vpos = (if oy1 < oy2 then (oy +. oy1) else (oy -. oy2)) /. vdenom in

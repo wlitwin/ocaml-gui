@@ -7,7 +7,7 @@ class intBox app = object(self)
 
     method! setKeyFilter f = userKeyFilter <- f
 
-    method number = int_of_string self#text
+    method number = Int.of_string self#text
 
     method isValid = try ignore(self#number); true with _ -> false
 

@@ -7,25 +7,13 @@ let dummy_ctx =
 
 let flip f x y = f y x
 
-let getChar () =
-    flush stdout;
-    let termio = Unix.tcgetattr Unix.stdin in
-    let () =
-        Unix.tcsetattr Unix.stdin Unix.TCSADRAIN
-        { termio with Unix.c_icanon = false; Unix.c_echo = false; }
-    in
-    let res = input_char stdin in
-    Unix.tcsetattr Unix.stdin Unix.TCSADRAIN termio;
-    res
-;;
-
 let id (a : 'a) : 'a = a
 
 exception Break
 let get_first_hashtbl tbl =
     let res = ref None in
     try
-        Hashtbl.iter (fun _ v ->
+        Hashtbl.iter ~f:(fun v ->
             res := Some v;
             raise Break
         ) tbl;
@@ -43,15 +31,15 @@ let some = function
     | None -> failwith "None type"
 
 let hash_of_list lst =
-    let hash = Hashtbl.create 10 in
-    List.iter (fun (k, v) -> Hashtbl.replace hash k v) lst;
+    let hash = Hashtbl.Poly.create () in
+    List.iter ~f:(fun (k, v) -> Hashtbl.Poly.set hash k v) lst;
     hash
 ;;
 
 let merge_hash h1 h2 =
-    Hashtbl.iter (fun k v ->
-        if not (Hashtbl.mem h1 k) then
-            Hashtbl.replace h1 k v
+    Hashtbl.Poly.iteri ~f:(fun ~key ~data ->
+        if not (Hashtbl.mem h1 key) then
+            Hashtbl.set h1 key data
     ) h2
 ;;
 
@@ -131,13 +119,7 @@ let take n lst =
 
 let drop n lst = take n lst |> snd
 
-let iceil = int_of_float % ceil
-
-let find f lst =
-    try
-        Some (List.find f lst)
-    with Not_found -> None
-;;
+let iceil = Int.of_float % Caml.ceil
 
 let get_opt opt default =
     match opt with
@@ -146,11 +128,10 @@ let get_opt opt default =
 ;;
 
 let timeit name f =
-    let start = Sys.time() in
+    let start = Unix.time() in
     let res = f() in
-    let end_ = Sys.time() in
-    Printf.printf "%s time: %f\n" name (end_ -. start);
-    flush stdout;
+    let end_ = Unix.time() in
+    Stdio.printf "%s time: %f\n%!" name (end_ -. start);
     res
 ;;
 
@@ -175,28 +156,39 @@ let findIdx f lst =
 
 let removeIdx idx lst =
     let before, after = take idx lst in
-    before @ List.tl after
+    before @ List.tl_exn after
 ;;
 
 let clamp value minVal maxVal =
+    let open Float in
     if value < minVal then minVal
     else if value > maxVal then maxVal
     else value
 ;;
 
+let clampi value minVal maxVal =
+    if value < minVal then minVal
+    else if value > maxVal then maxVal
+    else value
+;;
+
+let read_line () =
+    Stdio.In_channel.input_line Stdio.stdin |> some
+;;
+
 let rec prompt_int str =
     try
-        print_string str;
-        int_of_string (read_line())
+        Stdio.printf "%s%!" str;
+        Int.of_string (read_line())
     with _ ->
-        print_endline "Please enter a number";
+        Stdio.print_endline "Please enter a number";
         prompt_int str
 ;;
 
 let rec prompt_range str min max =
     let v = prompt_int str in
     if v < min || v > max then begin
-        print_endline ("Number was not in range (" ^ string_of_int min ^ ", " ^ string_of_int max ^ ")");
+        Stdio.print_endline ("Number was not in range (" ^ Int.to_string min ^ ", " ^ Int.to_string max ^ ")");
         prompt_range str min max
     end else
         v
@@ -204,7 +196,7 @@ let rec prompt_range str min max =
 
 let rec printTimes times str =
     if times > 0 then begin
-        print_string str; printTimes (times - 1) str
+        Stdio.printf "%s" str; printTimes (times - 1) str
     end
 ;;
 
@@ -213,29 +205,30 @@ let rec indent = function
     | n -> " " ^ indent (n - 1)
 ;;
 
-let printIndent amount = print_string (indent amount)
+let printIndent amount = Stdio.printf "%s%!" (indent amount)
 
 let prompt str =
-    print_string str;
+    Stdio.printf "%s%!" str;
     read_line()
 ;;
 
 let prompt_choices str choices =
     let len = List.length choices in
-    print_endline (String.concat "" (List.mapi (fun idx item -> Printf.sprintf "%d) %s\n" (idx + 1) item) choices));
+    Stdio.print_endline 
+        (String.concat ~sep:"" (List.mapi ~f:(fun idx item -> Printf.sprintf "%d) %s\n" (idx + 1) item) choices));
     let idx = prompt_range str 1 len in
     List.nth choices (idx - 1)
 ;;
 
 let prompt_choices2 str str_f choices =
     let len = List.length choices in
-    print_endline (String.concat "" (List.mapi (fun idx item -> Printf.sprintf "%d) %s\n" (idx + 1) (str_f item)) choices));
+    Stdio.print_endline (String.concat ~sep:"" (List.mapi ~f:(fun idx item -> Printf.sprintf "%d) %s\n" (idx + 1) (str_f item)) choices));
     let idx = prompt_range str 1 len in
     List.nth choices (idx - 1)
 ;;
 
 let rec prompt_until str f =
-    print_string str;
+    Stdio.printf "%s%!" str;
     let ans = read_line() in
     if f ans then ans
     else prompt_until str f
@@ -267,18 +260,18 @@ let rec splice lst = function
 ;;
 
 let swap item1 item2 lst =
-    assert (List.exists (fun i -> i == item1) lst);
-    assert (List.exists (fun i -> i == item2) lst);
-    List.map (fun slot ->
-        if slot == item1 then item2
-        else if slot == item2 then item1
+    assert (List.exists ~f:(fun i -> phys_equal i item1) lst);
+    assert (List.exists ~f:(fun i -> phys_equal i item2) lst);
+    List.map ~f:(fun slot ->
+        if phys_equal slot item1 then item2
+        else if phys_equal slot item2 then item1
         else slot
     ) lst
 ;;
 
 let swapIdx idx1 idx2 lst =
-    let item1 = List.nth lst idx1
-    and item2 = List.nth lst idx2 in
+    let item1 = List.nth_exn lst idx1
+    and item2 = List.nth_exn lst idx2 in
     swap item1 item2 lst
 ;;
 
@@ -295,68 +288,29 @@ let strLeft str =
 ;;
 
 let hashtbl_values tbl =
-    Hashtbl.fold (fun _ v acc ->
-        v :: acc
-    ) tbl []
+    Hashtbl.fold ~f:(fun ~key:_ ~data acc ->
+        data :: acc
+    ) ~init:[] tbl
 ;;
 
 let assoc_of_hashtbl tbl =
-    Hashtbl.fold (fun k v acc ->
-        (k, v) :: acc
-    ) tbl []
-;;
-
-let rec startsWith str sub =
-    if String.length str = 0 ||
-       String.length sub = 0
-    then true
-    else if String.get str 0 = String.get sub 0 then
-        startsWith (strRight str) (strRight sub)
-    else
-        false
+    Hashtbl.fold tbl [] (fun ~key ~data acc ->
+        (key, data) :: acc
+    ) 
 ;;
 
 let startsWithCI str sub =
-    startsWith (String.lowercase_ascii str) (String.lowercase_ascii sub)
+    String.is_prefix (String.lowercase str) (String.lowercase sub)
 
 let strContains str sub =
     ExtLib.String.exists str sub
 
 let strContainsCI str sub =
-    strContains (String.lowercase_ascii str) (String.lowercase_ascii sub)
+    strContains (String.lowercase str) (String.lowercase sub)
 
 let strContainsAll str lst =
-    List.for_all (strContains str) lst
+    List.for_all ~f:(strContains str) lst
 
 let strContainsAllCI str lst =
-    List.for_all (strContainsCI str) lst
+    List.for_all ~f:(strContainsCI str) lst
 
-module Queue = struct
-
-let mk vals =
-    ref vals
-;;
-
-let fst (a, _) = a
-let snd (_, b) = b
-
-let pop queue =
-    match !queue with
-    | [] -> None
-    | hd :: tl -> queue := tl; Some hd
-;;
-
-let push queue value =
-    queue := !queue @ [value]
-;;
-
-let rec next visited queue =
-    match pop queue with
-    | None -> None
-    | Some s ->
-        match List.mem s visited with
-        | exception Not_found -> s
-        | _ -> next visited queue
-;;
-
-end
