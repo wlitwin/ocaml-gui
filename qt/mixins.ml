@@ -29,7 +29,7 @@ object
     (*val mutable virtual eventFilters*)
 
     method postEvent evt =
-        List.iter ~f:(fun f -> f evt) eventHandlers
+        List.iter eventHandlers (fun f -> f evt)
 end
 
 type mouse_button =
@@ -90,4 +90,6 @@ end
 class virtual drawable =
 object
     method virtual draw : Cairo.context -> unit 
+    method invalidate : unit =
+        ()
 end

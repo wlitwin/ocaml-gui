@@ -1,47 +1,5 @@
 open Rect
 
-let expose app drawing_area ev =
-    let cr = Cairo_gtk.create drawing_area#misc#window in
-    let allocation = drawing_area#misc#allocation in
-    Util.timeit "draw" (fun _ ->
-        try
-            let w = float allocation.Gtk.width
-            and h = float allocation.Gtk.height in
-            (*app#resizeViewport cr Rect.{w;h};
-            (*app#addEvent (Qt.Resize Rect.{w;h});*)
-            app#addEvent (Layout cr);
-            app#addEvent (Paint cr);
-            app#dispatch;
-            *)
-            ()
-        with e ->
-            print_endline "==================== EXCEPTION OCCURRED ==================";
-            print_endline (Printexc.to_string e);
-            Printexc.print_backtrace stdout;
-            flush stdout;
-            flush stderr;
-    );
-    true
-;;
-
-let fix_keycode key = (*Util.id key *)
-    if key = 0xffe1 then 0xffe2
-    else key
-;;
-
-let keypress app w eid : bool =
-    let key = fix_keycode (GdkEvent.Key.keyval eid) in
-    (*w#present();*)
-    true
-;;
-
-let keyrelease app w eid : bool =
-    let key = fix_keycode (GdkEvent.Key.keyval eid) in
-    Printf.printf "Key Released: %d (0x%x)\n" key key; flush stdout;
-    (*w#present();*)
-    true
-;;
-
 type special_keys_state = {
     mutable ctrlDown : bool;
     mutable shiftDown : bool;
@@ -49,8 +7,19 @@ type special_keys_state = {
     mutable superDown : bool;
 }
 
-class application = object(self)
-    val mutable viewport : size = {w=400.; h=400.}
+class application ?(title="Window") size = 
+    let _ = ignore(GMain.init()) in
+    let gtk_window = GWindow.window 
+        ~title
+        ~width:(Float.to_int size.w)
+        ~height:(Float.to_int size.h)
+        ~position:`CENTER 
+    () in
+object(self)
+    val mutable viewport : size = size
+    val mutable widget : Widget.basicWidget = new Widget.basicWidget
+    val mutable title : string = title
+    val window : GWindow.window = gtk_window
     val special_keys : special_keys_state = {
         ctrlDown=false;
         shiftDown=false;
@@ -58,27 +27,58 @@ class application = object(self)
         superDown=false;
     }
 
+    method title = title
+    method setTitle t =
+        title <- t;
+        gtk_window#set_title t
+
+    method widget = widget
+    method setWidget w = widget <- w
+
+    method redraw =
+        gtk_window#present()
+
+    method private keyDown key =
+        let key = self#normalizeKey (GdkEvent.Key.keyval key) in
+        Stdio.printf "Key Released: %d (0x%x)\n%!" key key;
+        widget#onKeyDown (Keys.of_code key);
+        true 
+
+    method private keyUp key =
+        let key = self#normalizeKey (GdkEvent.Key.keyval key) in
+        Stdio.printf "Key Released: %d (0x%x)\n%!" key key;
+        widget#onKeyUp (Keys.of_code key);
+        true 
+
+    method private expose drawing_area ev =
+        let cr = Cairo_gtk.create drawing_area#misc#window in
+        (*let allocation = drawing_area#misc#allocation in*)
+        Util.timeit "draw" (fun _ ->
+            try
+                (*let w = Float.of_int allocation.Gtk.width
+                and h = Float.of_int allocation.Gtk.height in*)
+                widget#draw cr
+            with e ->
+                Stdio.print_endline "==================== EXCEPTION OCCURRED ==================";
+                Stdio.print_endline (Exn.to_string e);
+                Backtrace.get() |> Backtrace.to_string |> Stdio.printf "%s\n%!"
+        );
+        true
+
     method private normalizeKey (key : int) =
-        match special_keys.shiftDown with
-        | true -> key |> Char.chr |> Char.lowercase_ascii |> Char.code
-        | false -> key
-        | exception _ -> key
+        let key = if key = 0xffe1 then 0xffe2 else key in
+        if special_keys.shiftDown then (
+            try key |> Char.of_int_exn |> Char.lowercase |> Char.to_int 
+            with  _ -> key
+        ) else key
 
     method main =
-        ignore(GMain.init());
-        let gtk_window = GWindow.window 
-            ~title:"Gtk Demo" 
-            ~width:viewport.w
-            ~height:viewport.h
-            ~position:`CENTER 
-        () in
         let d = GMisc.drawing_area ~packing:gtk_window#add () in
-        ignore(d#event#connect#expose (expose self d));
+        ignore(d#event#connect#expose (fun event -> self#expose d event));
         ignore(gtk_window#connect#destroy GMain.quit);
-        ignore(gtk_window#event#connect#key_press (keypress self gtk_window));
-        ignore(gtk_window#event#connect#key_release (keyrelease self gtk_window));
+        ignore(gtk_window#event#connect#key_press (fun key -> self#keyDown key));
+        ignore(gtk_window#event#connect#key_release (fun key -> self#keyUp key));
         gtk_window#show();
         GMain.main();
-
 end
 

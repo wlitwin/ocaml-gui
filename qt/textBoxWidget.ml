@@ -6,7 +6,7 @@ type font_info = {
     mutable weight : Cairo.weight;
 }
 
-class textBoxWidget = object(self)
+class textBoxWidget app = object(self)
     inherit basicWidget
 
     val mutable text : string = ""
@@ -21,35 +21,44 @@ class textBoxWidget = object(self)
 
     method text = text
 
+    method invalidate =
+        app#redraw
+
     method preferredSize =
         self#measureText Util.dummy_ctx 
-        (if text = "" then "default_size" else text)
+        (if String.(=) text "" then "default_size" else text)
 
     method onKeyDown key =
-        match key with
+        (match key with
         | Keys.Backspace -> text <- Util.strLeft text
-        | _ -> ()
+        | key when Keys.is_printable key -> text <- text ^ Keys.to_string key
+        | _ -> ());
+        self#invalidate
 
     method measureText cr text =
         let open Cairo in
         Cairo.save cr;
         Cairo.set_font_size cr font_info.fontSize;
-        Cairo.select_font_face cr font_info.font;
+        Cairo.select_font_face cr font_info.font ~weight:font_info.weight;
         let fe = font_extents cr in
         let te = text_extents cr text in
         Cairo.restore cr;
         Rect.{w=(*te.width +. te.x_bearing +.*) te.x_advance; h=fe.ascent +. fe.descent}
 
     method drawText cr =
+        Cairo.select_font_face cr font_info.font ~weight:font_info.weight;
         Cairo.set_font_size cr font_info.fontSize;
         let hint = self#measureText cr text in
         let color = self#style#fgColor in
         Cairo.set_source_rgba cr color.r color.g color.b color.a;
-        let offset = max 0. (hint.w -. rect.w +. (*if self#isFocused then 4. else *)0.) in
+        let offset = Float.(max 0. (hint.w -. rect.w +. (*if self#isFocused then 4. else *)0.)) in
         let fe = Cairo.font_extents cr in
         Cairo.move_to cr (rect.x -. offset) (rect.y +. fe.Cairo.ascent);
         Cairo.show_text cr text;
 
     method paint cr =
         self#drawText cr;
+
+    initializer
+        self#resize Rect.{x=0.; y=0.; w=200.; h=400.}
 end
