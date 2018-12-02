@@ -58,7 +58,4 @@ class textBoxWidget app = object(self)
 
     method paint cr =
         self#drawText cr;
-
-    initializer
-        self#resize Rect.{x=0.; y=0.; w=200.; h=400.}
 end

@@ -30,25 +30,30 @@ object(self)
     method title = title
     method setTitle t =
         title <- t;
-        gtk_window#set_title t
+        window#set_title t
 
     method widget = widget
     method setWidget w = widget <- w
 
     method redraw =
-        gtk_window#present()
+        window#coerce#misc#draw None
+
+    method resize (size : Rect.size) =
+        widget#resize Rect.{x=0.;y=0.;w=size.w;h=size.h};
+        self#redraw;
+        false
 
     method private keyDown key =
         let key = self#normalizeKey (GdkEvent.Key.keyval key) in
         Stdio.printf "Key Released: %d (0x%x)\n%!" key key;
         widget#onKeyDown (Keys.of_code key);
-        true 
+        true
 
     method private keyUp key =
         let key = self#normalizeKey (GdkEvent.Key.keyval key) in
         Stdio.printf "Key Released: %d (0x%x)\n%!" key key;
         widget#onKeyUp (Keys.of_code key);
-        true 
+        true
 
     method private expose drawing_area ev =
         let cr = Cairo_gtk.create drawing_area#misc#window in
@@ -74,11 +79,22 @@ object(self)
 
     method main =
         let d = GMisc.drawing_area ~packing:gtk_window#add () in
+        gtk_window#set_resizable true;
+        (*gtk_window#set_resize_mode `IMMEDIATE;*)
         ignore(d#event#connect#expose (fun event -> self#expose d event));
         ignore(gtk_window#connect#destroy GMain.quit);
         ignore(gtk_window#event#connect#key_press (fun key -> self#keyDown key));
         ignore(gtk_window#event#connect#key_release (fun key -> self#keyUp key));
+        ignore(gtk_window#event#connect#configure (fun evt -> 
+            let module GC = GdkEvent.Configure in
+            self#resize Rect.{
+                (*x=Float.of_int (GC.x evt);
+                y=Float.of_int (GC.y evt);*)
+                w=Float.of_int (GC.width evt); 
+                h=Float.of_int (GC.height evt)})
+        );
         gtk_window#show();
+        self#redraw;
         GMain.main();
 end
 
