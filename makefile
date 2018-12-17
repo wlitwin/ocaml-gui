@@ -6,7 +6,7 @@ PKGS=cairo2,cairo2.lablgtk2,lablgtk2,lablgtk2-extras,base,extlib,core
 #,ocamlgraph,ocamlgraph.dgraph
 
 dbg:
-	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread -I src -I qt src/main.d.byte
+	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread -I src -I gui src/main.d.byte
 
 opt:
 	$(OCAMLBUILD) -ocamlc ocamlopt -ocamlopt ocamlopt -cflags -unsafe,-annot,-bin-annot,-noassert,-unbox-closures,-unboxed-types,-nodynlink,-O3,-rounds=4,-unbox-closures-factor=100 -pkg $(PKGS) -I src src/main.native

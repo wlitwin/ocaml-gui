@@ -25,6 +25,6 @@ let inside r1 r2 =
                 (RectAabb.aabb_of_rect r2)
 ;;
 
-let str_of_rect r : string =
+let to_string r : string =
     Printf.sprintf "{x=%f y=%f w=%f h=%f}" r.x r.y r.w r.h
 ;;

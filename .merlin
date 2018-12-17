@@ -1,8 +1,8 @@
 S src/
-S qt/
+S gui/
 
 B _build/src/
-B _build/qt/
+B _build/gui/
 
 FLG -open Base
 PKG cairo2 cairo2.lablgtk2 lablgtk2 lablgtk2-extras ppx_sexp_conv sexplib ppx_deriving.show extlib ocamlgraph base core

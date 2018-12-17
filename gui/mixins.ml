@@ -31,7 +31,7 @@ object(self)
         List.fold self#items
                   ~init:Size.zero
                   ~f:(fun size item -> 
-                       Size.add_size size item#preferredSize)
+                       Size.add size item#preferredSize)
 end
 
 type event = .. 
