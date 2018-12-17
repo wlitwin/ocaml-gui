@@ -7,7 +7,7 @@ type font_info = {
 }
 
 class textBoxWidget app = object(self)
-    inherit basicWidget app
+    inherit basicWidget app as super
 
     val mutable text : string = ""
     val font_info : font_info = {

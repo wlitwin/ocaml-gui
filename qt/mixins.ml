@@ -14,11 +14,25 @@ object
 end
 
 class virtual layout =
-object
+object(self)
+    inherit layoutable as super
+    val mutable rect = Rect.empty_rect
+
     method virtual addLayoutable : layoutable -> unit
     method virtual removeLayoutable : int -> unit
     method virtual layout : rect -> unit
     method virtual items : layoutable list
+
+    method! resize r =
+        Stdio.printf " -- Layout Resizing to %f %f %f %f --\n%!" r.x r.y r.w r.h;
+        super#resize r;
+        self#layout r
+
+    method preferredSize =
+        List.fold self#items
+                  ~init:Rect.zero_size
+                  ~f:(fun size item -> 
+                       Rect.add_size size item#preferredSize)
 end
 
 type event = .. 
@@ -130,7 +144,7 @@ object(self)
         eventHandlers <-
             (function
                 | Focused -> isFocused <- true; self#onFocused
-                | Unfocused -> isFocused <- false; self#onFocused
+                | Unfocused -> isFocused <- false; self#onUnfocused
                 | _ -> Propagate) :: eventHandlers
 end
 

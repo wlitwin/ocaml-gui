@@ -93,6 +93,11 @@ type size = {
     h : float;
 }
 
+let add_size (s1 : size) (s2 : size) : size = {
+    w = s1.w +. s2.w;
+    h = s1.h +. s2.h;
+}
+
 let max_size (s1 : size) (s2 : size) : size = {
     w = Float.max s1.w s2.w;
     h = Float.max s1.h s2.h;

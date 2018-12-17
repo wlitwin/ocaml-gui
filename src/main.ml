@@ -2,31 +2,41 @@
 class main app = 
     let tbox = new TextBoxWidget.textBoxWidget app in
     let tbox2 = new TextBoxWidget.textBoxWidget app in
+    let tbox3 = new TextBoxWidget.textBoxWidget app in
+    let tbox4 = new TextBoxWidget.textBoxWidget app in
 
 object(self)
     inherit Widget.basicWidget app as super
 
-    val layout = new LayoutModule.verticalLayout
+    val v_layout = new LayoutModule.verticalLayout
+    val h_layout_1 = new LayoutModule.horizontalLayout
+    val h_layout_2 = new LayoutModule.horizontalLayout
 
     method! onKeyDown k =
-        Stdio.printf "Key down\n";
         self#focused#postEvent (Mixins.KeyDown k)
 
     method resize rect =
-        Stdio.printf "Main application resized\n%!";
         super#resize rect;
-        layout#layout rect
+        v_layout#layout rect;
 
     method! onDraw cr =
         tbox#onDraw cr;
         tbox2#onDraw cr;
+        tbox3#onDraw cr;
+        tbox4#onDraw cr;
 
     initializer
-        layout#addLayoutable (tbox :> Mixins.layoutable);
-        layout#addLayoutable (tbox2 :> Mixins.layoutable);
+        h_layout_1#addLayoutable (tbox  :> Mixins.layoutable);
+        h_layout_1#addLayoutable (tbox2 :> Mixins.layoutable);
+        h_layout_2#addLayoutable (tbox3 :> Mixins.layoutable);
+        h_layout_2#addLayoutable (tbox4 :> Mixins.layoutable);
+        v_layout#addLayoutable (h_layout_1 :> Mixins.layoutable);
+        v_layout#addLayoutable (h_layout_2 :> Mixins.layoutable);
 
     inherit Mixins.focusManager app [(tbox :> Mixins.handlesEvent);
-                                     (tbox2 :> Mixins.handlesEvent)]
+                                     (tbox2 :> Mixins.handlesEvent);
+                                     (tbox4 :> Mixins.handlesEvent);
+                                     (tbox3 :> Mixins.handlesEvent)]
 
 end
 

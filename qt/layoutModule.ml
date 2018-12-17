@@ -3,7 +3,7 @@ open Mixins
 class virtual linearLayout =
 object
     inherit layout
-
+    val id = 0
     val items : layoutable DynArray.t = DynArray.make 1
 
     method addLayoutable l = DynArray.add items l
@@ -34,6 +34,7 @@ object
             let ratio = (get sizes idx) /. sum in
             let width = ratio *. rect.w in
             item#resize {rect with x = !offset; w = width};
+            Stdio.printf "H Layout size %f %f %f %f\n" rect.x rect.y rect.w rect.h;
             offset := !offset +. width;
         ) items
 end
@@ -53,7 +54,7 @@ object
             let ratio = (get sizes idx) /. sum in
             let height = ratio *. rect.h in
             item#resize {rect with y = !offset; h = height};
-            Stdio.printf "Layout size %f %f %f %f\n" rect.x rect.y rect.w rect.h;
+            Stdio.printf "V Layout size %f %f %f %f\n" rect.x rect.y rect.w rect.h;
             offset := !offset +. height;
         ) items
 end
