@@ -1,4 +1,3 @@
-
 class virtual layoutable =
 object
     val virtual id : int

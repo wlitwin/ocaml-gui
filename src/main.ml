@@ -1,4 +1,3 @@
-
 class main app = 
     let tbox1 = new TextBoxWidget.textBoxWidget app in
     let tbox2 = new TextBoxWidget.textBoxWidget app in

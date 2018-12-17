@@ -41,7 +41,7 @@ class textBoxWidget app = object(self)
         let fe = font_extents cr in
         let te = text_extents cr text in
         Cairo.restore cr;
-        Rect.{w=(*te.width +. te.x_bearing +.*) te.x_advance; h=fe.ascent +. fe.descent}
+        Size.{w=(*te.width +. te.x_bearing +.*) te.x_advance; h=fe.ascent +. fe.descent}
 
     method drawText cr =
         Cairo.select_font_face cr font_info.font ~weight:font_info.weight;
