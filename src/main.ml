@@ -12,9 +12,6 @@ object(self)
     val h_layout_1 = new LayoutModule.horizontalLayout
     val h_layout_2 = new LayoutModule.horizontalLayout
 
-    method! onKeyDown k =
-        self#focused#postEvent (Mixins.KeyDown k)
-
     method resize rect =
         super#resize rect;
         v_layout#layout rect;

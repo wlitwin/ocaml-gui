@@ -72,7 +72,7 @@ object(self)
     inherit handlesEvent
 
     method onClick (mouse_button, pos) = Propagate
-    method onEnter pos =  Propagate
+    method onEnter pos = Propagate
     method onLeave pos = Propagate
     method onMove pos = Propagate
 
@@ -148,30 +148,19 @@ object(self)
 end
 
 class virtual focusManager app children =
-    let split = match children with
-              | [] -> failwith "Needs at least one child"
-              | hd :: tl -> ([], hd, tl)
-    in
 object(self)
     inherit handlesEvent
 
-    val mutable focused = split
-    val children : handlesEvent list = children
+    val mutable focused = 0
+    val children : handlesEvent array = Array.of_list children
 
     method private rotateFocus = 
-        focused <-
-            match focused with
-            | left, w, [] -> 
-                    let lst = List.rev (w :: left) in
-                    [], List.hd_exn lst, List.tl_exn lst
-            | left, w, hd :: tl -> w :: left, hd, tl
+        focused <- Int.rem (focused + 1) (Array.length children)
 
     method private sendToAll evt =
-        List.iter children (fun ch -> ch#postEvent evt |> ignore)
+        Array.iter children (fun ch -> ch#postEvent evt |> ignore)
 
-    method focused =
-        match focused with
-        | _, widget, _ -> widget
+    method focused = children.(focused)
 
     initializer 
         self#focused#postEvent Focused |> ignore;
@@ -187,6 +176,5 @@ object(self)
                         app#redraw;
                         Stop 
                 | Paint _ as p -> self#sendToAll p; Propagate
-                | e -> 
-                        self#focused#postEvent e) :: (*eventHandlers*) []
+                | e -> self#focused#postEvent e) :: eventHandlers
 end
