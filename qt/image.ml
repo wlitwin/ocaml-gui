@@ -1,4 +1,4 @@
-open Control
+(*open Control
 
 module CI = Cairo.Image
 module CP = Cairo.Pattern
@@ -54,3 +54,4 @@ object(self)
         Cairo.set_source cr pat;
         Cairo.fill cr;
 end
+*)

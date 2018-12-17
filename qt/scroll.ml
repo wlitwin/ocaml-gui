@@ -1,3 +1,4 @@
+(*
 open Rect
 open Control
 
@@ -136,4 +137,4 @@ object(self)
         Cairo.fill cr;
         *)
 end
-
+*)
