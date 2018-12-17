@@ -40,7 +40,6 @@ object(self)
 
 end
 
-
 let _ =
     let app = new NewApplication.application Rect.{w=400.; h=400.} in
     let mainWidget = new main app in

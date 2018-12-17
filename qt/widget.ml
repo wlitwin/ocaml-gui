@@ -4,7 +4,7 @@ class basicWidget app = object(self)
     val id = 0
     val mutable eventHandlers = []
     val style = new Style.style
-    val mutable rect = Rect.empty_rect
+    val mutable rect = Rect.empty
     val application = app
 
     inherit styleable

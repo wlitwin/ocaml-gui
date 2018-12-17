@@ -24,10 +24,9 @@ object
     inherit linearLayout
 
     method layout rect =
-        let open Rect in
         (* Get ratios of items *)
         let get = DynArray.get in
-        let sizes = DynArray.map (fun l -> l#preferredSize.w) items in
+        let sizes = DynArray.map (fun l -> l#preferredSize.Size.w) items in
         let sum   = DynArray.fold_left ( +. ) 0. sizes in
         let offset = ref rect.x in
         DynArray.iteri (fun idx item ->
@@ -44,10 +43,9 @@ object
     inherit linearLayout
 
     method layout rect =
-        let open Rect in
         (* Get ratios of items *)
         let get = DynArray.get in
-        let sizes = DynArray.map (fun l -> l#preferredSize.h) items in
+        let sizes = DynArray.map (fun l -> l#preferredSize.Size.h) items in
         let sum   = DynArray.fold_left ( +. ) 0. sizes in
         let offset = ref rect.y in
         DynArray.iteri (fun idx item ->

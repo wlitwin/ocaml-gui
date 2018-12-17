@@ -1,5 +1,3 @@
-open Rect
-
 type special_keys_state = {
     mutable ctrlDown : bool;
     mutable shiftDown : bool;
@@ -11,13 +9,13 @@ class application ?(title="Window") size =
     let _ = ignore(GMain.init()) in
     let gtk_window = GWindow.window 
         ~title
-        ~width:(Float.to_int size.w)
-        ~height:(Float.to_int size.h)
+        ~width:(Float.to_int size.Size.w)
+        ~height:(Float.to_int size.Size.h)
         ~position:`CENTER 
     () in
     let drawing_area = GMisc.drawing_area ~packing:gtk_window#add () in
 object(self)
-    val mutable viewport : size = size
+    val mutable viewport : Size.t = size
     val mutable widget : Widget.basicWidget option = None
     val mutable title : string = title
     val window : GWindow.window = gtk_window
@@ -40,7 +38,7 @@ object(self)
     method redraw =
         GtkBase.Widget.queue_draw window#as_widget;
 
-    method resize (size : Rect.size) =
+    method resize (size : Size.t) =
         Stdio.printf "Resizing application %f %f\n%!" size.w size.h;
         self#widget#resize Rect.{x=0.;y=0.;w=size.w;h=size.h};
         self#redraw;

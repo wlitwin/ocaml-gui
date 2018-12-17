@@ -1,7 +1,7 @@
 class style = object(self)
-    val mutable bgColor = Rect.white
-    val mutable fgColor = Rect.black;
-    val mutable borderColor = Rect.none;
+    val mutable bgColor = Color.white
+    val mutable fgColor = Color.black;
+    val mutable borderColor = Color.none;
     val mutable borderSize = 1.0;
 
     method bgColor = bgColor

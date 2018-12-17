@@ -1,14 +1,13 @@
-open Rect
 
 class virtual layoutable =
 object
     val virtual id : int
-    val mutable virtual rect : rect
+    val mutable virtual rect : Rect.t
     
-    method virtual preferredSize : size
+    method virtual preferredSize : Size.t
     method id   = id
-    method size = size_of_rect rect
-    method pos  = pos_of_rect rect
+    method size = RectSize.size_of_rect rect
+    method pos  = RectPos.pos_of_rect rect
     method rect = rect
     method resize r = rect <- r
 end
@@ -16,11 +15,11 @@ end
 class virtual layout =
 object(self)
     inherit layoutable as super
-    val mutable rect = Rect.empty_rect
+    val mutable rect = Rect.empty
 
     method virtual addLayoutable : layoutable -> unit
     method virtual removeLayoutable : int -> unit
-    method virtual layout : rect -> unit
+    method virtual layout : Rect.t -> unit
     method virtual items : layoutable list
 
     method! resize r =
@@ -30,9 +29,9 @@ object(self)
 
     method preferredSize =
         List.fold self#items
-                  ~init:Rect.zero_size
+                  ~init:Size.zero
                   ~f:(fun size item -> 
-                       Rect.add_size size item#preferredSize)
+                       Size.add_size size item#preferredSize)
 end
 
 type event = .. 
@@ -63,10 +62,10 @@ type mouse_button =
     | Right
     | Middle
 
-type event += Click of (mouse_button * pos)
-            | Move of pos
-            | Enter of pos
-            | Leave of pos
+type event += Click of (mouse_button * Pos.t)
+            | Move of Pos.t
+            | Enter of Pos.t
+            | Leave of Pos.t
 
 class virtual handlesMouse =
 object(self)
