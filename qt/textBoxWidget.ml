@@ -7,7 +7,7 @@ type font_info = {
 }
 
 class textBoxWidget app = object(self)
-    inherit basicWidget
+    inherit basicWidget app
 
     val mutable text : string = ""
     val font_info : font_info = {
@@ -21,9 +21,6 @@ class textBoxWidget app = object(self)
 
     method text = text
 
-    method invalidate =
-        app#redraw
-
     method preferredSize =
         self#measureText Util.dummy_ctx 
         (if String.(=) text "" then "default_size" else text)
@@ -33,7 +30,8 @@ class textBoxWidget app = object(self)
         | Keys.Backspace -> text <- Util.strLeft text
         | key when Keys.is_printable key -> text <- text ^ Keys.to_string key
         | _ -> ());
-        self#invalidate
+        self#invalidate;
+        Mixins.Propagate
 
     method measureText cr text =
         let open Cairo in
@@ -51,11 +49,17 @@ class textBoxWidget app = object(self)
         let hint = self#measureText cr text in
         let color = self#style#fgColor in
         Cairo.set_source_rgba cr color.r color.g color.b color.a;
-        let offset = Float.(max 0. (hint.w -. rect.w +. (*if self#isFocused then 4. else *)0.)) in
+        let offset = Float.(max 0. (hint.w -. rect.w)) in
         let fe = Cairo.font_extents cr in
         Cairo.move_to cr (rect.x -. offset) (rect.y +. fe.Cairo.ascent);
         Cairo.show_text cr text;
 
     method paint cr =
+        begin if isFocused then
+            Cairo.rectangle cr rect.x rect.y rect.w rect.h;
+            Cairo.set_source_rgba cr 1. 0. 0. 1.;
+            Cairo.set_line_width cr 10.;
+            Cairo.stroke cr;
+        end;
         self#drawText cr;
 end

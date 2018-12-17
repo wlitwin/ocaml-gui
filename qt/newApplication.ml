@@ -15,11 +15,13 @@ class application ?(title="Window") size =
         ~height:(Float.to_int size.h)
         ~position:`CENTER 
     () in
+    let drawing_area = GMisc.drawing_area ~packing:gtk_window#add () in
 object(self)
     val mutable viewport : size = size
-    val mutable widget : Widget.basicWidget = new Widget.basicWidget
+    val mutable widget : Widget.basicWidget option = None
     val mutable title : string = title
     val window : GWindow.window = gtk_window
+    val drawing_area : GMisc.drawing_area = drawing_area
     val special_keys : special_keys_state = {
         ctrlDown=false;
         shiftDown=false;
@@ -32,37 +34,39 @@ object(self)
         title <- t;
         window#set_title t
 
-    method widget = widget
-    method setWidget w = widget <- w
+    method widget = Option.value_exn widget
+    method setWidget w = widget <- Some w
 
     method redraw =
-        window#coerce#misc#draw None
+        GtkBase.Widget.queue_draw window#as_widget;
 
     method resize (size : Rect.size) =
-        widget#resize Rect.{x=0.;y=0.;w=size.w;h=size.h};
+        Stdio.printf "Resizing application %f %f\n%!" size.w size.h;
+        self#widget#resize Rect.{x=0.;y=0.;w=size.w;h=size.h};
         self#redraw;
         false
 
     method private keyDown key =
         let key = self#normalizeKey (GdkEvent.Key.keyval key) in
         Stdio.printf "Key Released: %d (0x%x)\n%!" key key;
-        widget#onKeyDown (Keys.of_code key);
+        self#widget#postEvent (Mixins.KeyDown (Keys.of_code key)) |> ignore;
         true
 
     method private keyUp key =
         let key = self#normalizeKey (GdkEvent.Key.keyval key) in
         Stdio.printf "Key Released: %d (0x%x)\n%!" key key;
-        widget#onKeyUp (Keys.of_code key);
+        self#widget#postEvent (Mixins.KeyUp (Keys.of_code key)) |> ignore;
         true
 
-    method private expose drawing_area ev =
+    method private expose ev =
+        Stdio.printf "Main window got an expose event\n%!";
         let cr = Cairo_gtk.create drawing_area#misc#window in
         (*let allocation = drawing_area#misc#allocation in*)
         Util.timeit "draw" (fun _ ->
             try
                 (*let w = Float.of_int allocation.Gtk.width
                 and h = Float.of_int allocation.Gtk.height in*)
-                widget#draw cr
+                self#widget#postEvent (Mixins.Paint cr) |> ignore
             with e ->
                 Stdio.print_endline "==================== EXCEPTION OCCURRED ==================";
                 Stdio.print_endline (Exn.to_string e);
@@ -78,10 +82,9 @@ object(self)
         ) else key
 
     method main =
-        let d = GMisc.drawing_area ~packing:gtk_window#add () in
         gtk_window#set_resizable true;
         (*gtk_window#set_resize_mode `IMMEDIATE;*)
-        ignore(d#event#connect#expose (fun event -> self#expose d event));
+        ignore(drawing_area#event#connect#expose (fun event -> self#expose event));
         ignore(gtk_window#connect#destroy GMain.quit);
         ignore(gtk_window#event#connect#key_press (fun key -> self#keyDown key));
         ignore(gtk_window#event#connect#key_release (fun key -> self#keyUp key));

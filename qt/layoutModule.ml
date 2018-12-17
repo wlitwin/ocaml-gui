@@ -53,6 +53,7 @@ object
             let ratio = (get sizes idx) /. sum in
             let height = ratio *. rect.h in
             item#resize {rect with y = !offset; h = height};
+            Stdio.printf "Layout size %f %f %f %f\n" rect.x rect.y rect.w rect.h;
             offset := !offset +. height;
         ) items
 end

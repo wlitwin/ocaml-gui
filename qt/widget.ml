@@ -1,16 +1,21 @@
 open Mixins
 
-class basicWidget = object(self)
+class basicWidget app = object(self)
     val id = 0
     val mutable eventHandlers = []
     val style = new Style.style
     val mutable rect = Rect.empty_rect
+    val application = app
 
     inherit styleable
     inherit handlesMouse
     inherit handlesKeyboard
     inherit layoutable
     inherit drawable
+    inherit focusable
+
+    method invalidate : unit =
+        app#redraw
 
     method preferredSize = self#size
 
@@ -26,7 +31,7 @@ class basicWidget = object(self)
 
     method paint cr = ()
 
-    method draw cr =
+    method onDraw cr =
         Cairo.save cr;
         self#clipDrawArea cr;
         self#fillBgColor cr;
