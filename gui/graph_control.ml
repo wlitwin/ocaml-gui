@@ -77,10 +77,10 @@ let draw_command cr =
 
 class graph_area app =
 object(self)
-    inherit control app as super
+    inherit Widget.basicWidget app as super
     
     val mutable graph = PLC.empty
-    val mutable bbox = Rect.{w=400.;h=200.}
+    val mutable bbox = Size.{w=400.;h=200.}
     val mutable graph_layout : Dot.XDotInput.graph_layout option = None
 
     method setGraph g =
@@ -106,15 +106,15 @@ object(self)
         ) (Util.some graph_layout).edge_layouts;
         debug (fun _ -> Printf.printf "BBOX IS %f %f\n" bbox.w bbox.h)
 
-    method! sizeHint cr = 
+    method! preferredSize = 
         (*self#relayout cr;*)
         (*super#relayoutNoCr;*)
         debug (fun _ -> Printf.printf "SETTING BBOX TO %f %f\n" bbox.w bbox.h);
         bbox
 
-    method! setGeometry r =
+    method! resize r =
         debug (fun _ -> Printf.printf "GETTING GEOMETRY %f %f %f %f\n" r.x r.y r.w r.h);
-        super#setGeometry r
+        super#resize r
 
     method! paint cr =
         debug (fun _ -> Printf.printf "GRAPH CONTROL IS PAINTING\n");
@@ -146,6 +146,7 @@ object(self)
 
 end
 
+(*
 class graph app =
     let graph_area = new graph_area app in
 object(self)
@@ -156,3 +157,4 @@ object(self)
     method setGraph = graph_area#setGraph
     
 end
+*)
