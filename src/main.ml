@@ -1,8 +1,10 @@
 class main app = 
-    let tbox1 = new TextBoxWidget.textBoxWidget app in
-    let tbox2 = new TextBoxWidget.textBoxWidget app in
-    let tbox3 = new TextBoxWidget.textBoxWidget app in
-    let tbox4 = new TextBoxWidget.textBoxWidget app in
+    let tbox1 = new TextBox.textBoxWidget app in
+    let tbox2 = new TextBox.textBoxWidget app in
+    let tbox3 = new TextBox.textBoxWidget app in
+    let tbox4 = new TextBox.textBoxWidget app in
+    let lbl1  = new Label.label ~text:"Awesome!" app in
+    let lbl2  = new Label.label ~text:"Another label!" app in
 
 object(self)
     inherit Widget.basicWidget app as super
@@ -20,6 +22,8 @@ object(self)
         tbox2#onDraw cr;
         tbox3#onDraw cr;
         tbox4#onDraw cr;
+        lbl1#onDraw cr;
+        lbl2#onDraw cr;
 
     initializer
         h_layout_1#addLayoutable (tbox1 :> Mixins.layoutable);
@@ -28,6 +32,8 @@ object(self)
         h_layout_2#addLayoutable (tbox4 :> Mixins.layoutable);
         v_layout#addLayoutable (h_layout_1 :> Mixins.layoutable);
         v_layout#addLayoutable (h_layout_2 :> Mixins.layoutable);
+        v_layout#addLayoutable (lbl1 :> Mixins.layoutable);
+        v_layout#addLayoutable (lbl2 :> Mixins.layoutable);
 
     inherit Mixins.focusManager app [(tbox1 :> Mixins.handlesEvent);
                                      (tbox2 :> Mixins.handlesEvent);

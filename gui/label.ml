@@ -6,10 +6,10 @@ type font_info = {
     mutable weight : Cairo.weight;
 }
 
-class textBoxWidget app = object(self)
+class label ?(text="") app = object(self)
     inherit basicWidget app as super
 
-    val mutable text : string = ""
+    val mutable text : string = text
     val font_info : font_info = {
         fontSize = 32.0;
         font = "Ubuntu Mono";
@@ -24,14 +24,6 @@ class textBoxWidget app = object(self)
     method preferredSize =
         self#measureText Util.dummy_ctx 
         (if String.(=) text "" then "default_size" else text)
-
-    method onKeyDown key =
-        (match key with
-        | Keys.Backspace -> text <- Util.strLeft text
-        | key when Keys.is_printable key -> text <- text ^ Keys.to_string key
-        | _ -> ());
-        self#invalidate;
-        Mixins.Propagate
 
     method measureText cr text =
         let open Cairo in
