@@ -31,6 +31,7 @@ object(self)
 
     method onKeyDown k =
         begin match k with
+        | Keys.Enter
         | Keys.Space -> callback (Selected self#selected)
         | Keys.Esc -> callback Canceled
         | Keys.J -> self#updateFocus Mixins.Forward;
@@ -62,9 +63,6 @@ object(self)
     val mutable popUp = None
 
     method selected = choices.(index)
-
-    method private rotateChoice =
-        index <- Int.rem (index + 1) (Array.length choices)
 
     method private popUpCallback res =
         begin match res with

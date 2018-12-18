@@ -1,5 +1,3 @@
-(*open Control
-
 module CI = Cairo.Image
 module CP = Cairo.Pattern
 
@@ -7,17 +5,17 @@ module ByteArray = ByteArray.ByteArray
 
 class image app =
 object(self)
-    inherit control app as super
+    inherit Widget.basicWidget app as super
 
     val mutable image = ByteArray.empty
-    val mutable cimg = CI.create CI.RGB24 0 0
+    val mutable cimg = CI.create CI.ARGB32 0 0
     val mutable filter = CP.NEAREST
     val mutable keepAspectRatio = true
     val mutable scaleImage = 1.0
     
     method setImage img dimx dimy = 
         image <- img;
-        cimg <- CI.create_for_data8 image CI.RGB24 dimx dimy
+        cimg <- CI.create_for_data8 image CI.ARGB32 dimx dimy
 
     method setFilter f = filter <- f 
 
@@ -25,7 +23,7 @@ object(self)
 
     method setScale s = scaleImage <- s
 
-    method! sizeHint cr = {
+    method! preferredSize = {
         w=Float.(of_int (CI.get_width cimg) *. scaleImage);
         h=Float.(of_int (CI.get_height cimg) *. scaleImage);
     }
@@ -54,4 +52,3 @@ object(self)
         Cairo.set_source cr pat;
         Cairo.fill cr;
 end
-*)
