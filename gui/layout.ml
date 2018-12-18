@@ -20,8 +20,15 @@ object
 end
 
 class horizontalLayout =
-object
+object(self)
     inherit linearLayout
+
+    method preferredSize =
+        List.fold self#items
+                  ~init:Size.zero
+                  ~f:(fun size item -> 
+                       let pz = item#preferredSize in
+                       Size.{w=size.w +. pz.w; h=Float.max size.h pz.h})
 
     method layout rect =
         (* Get ratios of items *)
@@ -39,8 +46,15 @@ object
 end
 
 class verticalLayout =
-object
+object(self)
     inherit linearLayout
+
+    method preferredSize =
+        List.fold self#items
+                  ~init:Size.zero
+                  ~f:(fun size item -> 
+                       let pz = item#preferredSize in
+                       Size.{w=Float.max size.w pz.w; h=size.h +. pz.h})
 
     method layout rect =
         (* Get ratios of items *)
@@ -60,6 +74,8 @@ end
 class flowLayout =
 object
     inherit linearLayout
+
+    method preferredSize = Size.zero
 
     method layout r = ()
 end

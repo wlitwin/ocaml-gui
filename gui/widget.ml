@@ -6,6 +6,7 @@ class basicWidget app = object(self)
     val style = new Style.style
     val mutable rect = Rect.empty
     val application = app
+    val mutable shouldClip = true
 
     inherit styleable
     inherit handlesMouse
@@ -26,8 +27,17 @@ class basicWidget app = object(self)
         Cairo.fill cr;
 
     method clipDrawArea cr =
+        if shouldClip then (
+            Cairo.rectangle cr rect.x rect.y rect.w rect.h;
+            Cairo.clip cr;
+        )
+
+    method drawBorder cr =
+        let color = style#fgColor in
         Cairo.rectangle cr rect.x rect.y rect.w rect.h;
-        Cairo.clip cr;
+        Cairo.set_source_rgba cr color.r color.g color.b color.a;
+        Cairo.set_line_width cr 10.;
+        Cairo.stroke cr;
 
     method paint cr = ()
 

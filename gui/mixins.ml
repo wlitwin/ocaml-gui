@@ -25,12 +25,6 @@ object(self)
         Stdio.printf " -- Layout Resizing to %f %f %f %f --\n%!" r.x r.y r.w r.h;
         super#resize r;
         self#layout r
-
-    method preferredSize =
-        List.fold self#items
-                  ~init:Size.zero
-                  ~f:(fun size item -> 
-                       Size.add size item#preferredSize)
 end
 
 type event = .. 
@@ -146,6 +140,9 @@ object(self)
                 | _ -> Propagate) :: eventHandlers
 end
 
+type focus_direction = Forward
+                     | Backward
+
 class virtual focusManager app children =
 object(self)
     inherit handlesEvent
@@ -153,8 +150,25 @@ object(self)
     val mutable focused = 0
     val children : handlesEvent array = Array.of_list children
 
-    method private rotateFocus = 
+    method private rotateFocusFwd () = 
         focused <- Int.rem (focused + 1) (Array.length children)
+
+    method private rotateFocusBwd () =
+        let len = Array.length children in
+        focused <- focused - 1;
+        if focused < 0 then focused <- len - 1
+
+    method private updateFocus dir =
+        let focus_fn = match dir with
+               | Forward -> self#rotateFocusFwd
+               | Backward -> self#rotateFocusBwd
+        in
+        let old_widget = self#focused in
+        focus_fn();
+        let new_widget = self#focused in
+        old_widget#postEvent Unfocused |> ignore;
+        new_widget#postEvent Focused |> ignore;
+        app#redraw;
 
     method private sendToAll evt =
         Array.iter children (fun ch -> ch#postEvent evt |> ignore)
@@ -166,13 +180,7 @@ object(self)
         eventHandlers <-
             (function
                 | KeyDown Keys.Tab -> 
-                        (* Change focus *)
-                        let old_widget = self#focused in
-                        self#rotateFocus;
-                        let new_widget = self#focused in
-                        old_widget#postEvent Unfocused |> ignore;
-                        new_widget#postEvent Focused |> ignore;
-                        app#redraw;
+                        self#updateFocus Forward;
                         Stop 
                 | Paint _ as p -> self#sendToAll p; Propagate
                 | e -> self#focused#postEvent e) :: eventHandlers
