@@ -26,8 +26,10 @@ class main app =
     in
     let lbl3 = new Label.label ~text:"Cell (0,0)!" app in
     let lbl4 = new Label.label ~text:"Cell (0,1)!" app in
-    let lbl5 = new Label.label ~text:"(2,0)!" app in
-    let lbl6 = new Label.label ~text:"(2,1)!" app in
+    let lbl5 = new Label.label ~text:"Cell (2,0)!" app in
+    let lbl6 = new Label.label ~text:"Cell (2,1)!" app in
+    let lbl7 = new Label.label ~text:"All three columns!" app in
+    let _ = lbl7#style#setBGColor Color.{r=0.7; g=0.7; b=0.7; a=1.} in
     let flow_labels = [
         "Label 1";
         "Label Amazing";
@@ -49,7 +51,7 @@ object(self)
     val h_layout_3 = new Layout.horizontalLayout
     val h_layout_4 = new Layout.horizontalLayout
     val flow_layout = new Layout.flowLayout
-    val grid_layout = new Layout.gridLayout 3 2
+    val grid_layout = new Layout.gridLayout 3 3
 
     method resize rect =
         super#resize rect;
@@ -72,6 +74,7 @@ object(self)
         lbl4#onDraw cr;
         lbl5#onDraw cr;
         lbl6#onDraw cr;
+        lbl7#onDraw cr;
 
     initializer
         h_layout_1#addLayoutable (dd  :> Mixins.layoutable);
@@ -98,6 +101,7 @@ object(self)
         grid_layout#addToCell 1 0 ~rows:2 (img3 :> Mixins.layoutable);
         grid_layout#addToCell 2 0 (lbl5 :> Mixins.layoutable);
         grid_layout#addToCell 2 1 (lbl6 :> Mixins.layoutable);
+        grid_layout#addToCell 0 2 ~cols:3 (lbl7 :> Mixins.layoutable);
 
     inherit Mixins.focusManager app [(dd :> Mixins.handlesEvent); 
                                      (tbox1 :> Mixins.handlesEvent);
