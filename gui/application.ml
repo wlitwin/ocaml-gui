@@ -27,6 +27,8 @@ object(self)
         superDown=false;
     }
 
+    method specialKeys = special_keys
+
     method title = title
     method setTitle t =
         title <- t;
@@ -44,16 +46,28 @@ object(self)
         self#redraw;
         false
 
+    method private checkSuperKeys key upDown =
+        match key with
+        | Keys.LControl -> special_keys.ctrlDown <- upDown
+        | Keys.LShift -> special_keys.shiftDown <- upDown
+        | Keys.LAlt -> special_keys.altDown <- upDown
+        | Keys.LSuper -> special_keys.superDown <- upDown
+        | _ -> ()
+
     method private keyDown key =
         let key = self#normalizeKey (GdkEvent.Key.keyval key) in
         Stdio.printf "Key Released: %d (0x%x)\n%!" key key;
-        self#widget#postEvent (Mixins.KeyDown (Keys.of_code key)) |> ignore;
+        let key = Keys.of_code key in
+        self#checkSuperKeys key true;
+        self#widget#postEvent (Mixins.KeyDown key) |> ignore;
         true
 
     method private keyUp key =
         let key = self#normalizeKey (GdkEvent.Key.keyval key) in
         Stdio.printf "Key Released: %d (0x%x)\n%!" key key;
-        self#widget#postEvent (Mixins.KeyUp (Keys.of_code key)) |> ignore;
+        let key = Keys.of_code key in
+        self#checkSuperKeys key false;
+        self#widget#postEvent (Mixins.KeyUp key) |> ignore;
         true
 
     method private expose ev =

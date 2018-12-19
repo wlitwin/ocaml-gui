@@ -5,7 +5,7 @@ type choices = Simple of string list
 type popup_result = Selected of int
                   | Canceled
 
-let coerce (a : Label.label) = (a :> Mixins.handlesEvent)
+let coerce (a : #basicWidget) : #Mixins.handlesEvent = (a :> Mixins.handlesEvent)
 
 class dropDownPopup app choices callback =
     let choices = Array.map choices (fun text -> new Label.label ~text app) in
