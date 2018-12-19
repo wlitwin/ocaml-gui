@@ -20,12 +20,14 @@ class main app =
         0; 255; 255; 255; (**) 0; 255; 0; 255;
     |] in
     let img3 = new Image.image app in
-    let _ = img3#setImage img_data2 2 2; img3#setScale 15.; img3#setKeepAspectRatio false in
+    let _ = img3#setImage img_data2 2 2; img3#setScale 50.; img3#setKeepAspectRatio false in
     let mk_lbl text =
         new Label.label ~text app
     in
     let lbl3 = new Label.label ~text:"Cell (0,0)!" app in
     let lbl4 = new Label.label ~text:"Cell (0,1)!" app in
+    let lbl5 = new Label.label ~text:"(2,0)!" app in
+    let lbl6 = new Label.label ~text:"(2,1)!" app in
     let flow_labels = [
         "Label 1";
         "Label Amazing";
@@ -47,7 +49,7 @@ object(self)
     val h_layout_3 = new Layout.horizontalLayout
     val h_layout_4 = new Layout.horizontalLayout
     val flow_layout = new Layout.flowLayout
-    val grid_layout = new Layout.gridLayout 4 4
+    val grid_layout = new Layout.gridLayout 3 2
 
     method resize rect =
         super#resize rect;
@@ -68,6 +70,8 @@ object(self)
         img3#onDraw cr;
         lbl3#onDraw cr;
         lbl4#onDraw cr;
+        lbl5#onDraw cr;
+        lbl6#onDraw cr;
 
     initializer
         h_layout_1#addLayoutable (dd  :> Mixins.layoutable);
@@ -92,6 +96,8 @@ object(self)
         grid_layout#addToCell 0 0 (lbl3 :> Mixins.layoutable);
         grid_layout#addToCell 0 1 (lbl4 :> Mixins.layoutable);
         grid_layout#addToCell 1 0 ~rows:2 (img3 :> Mixins.layoutable);
+        grid_layout#addToCell 2 0 (lbl5 :> Mixins.layoutable);
+        grid_layout#addToCell 2 1 (lbl6 :> Mixins.layoutable);
 
     inherit Mixins.focusManager app [(dd :> Mixins.handlesEvent); 
                                      (tbox1 :> Mixins.handlesEvent);

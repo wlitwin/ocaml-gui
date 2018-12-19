@@ -56,7 +56,8 @@ object(self)
         let sum_y = Array.fold max_y ~init:0. ~f:Float.(+) in
         let ratio arr sum =
             Array.iteri arr (fun idx v ->
-                arr.(idx) <- v /. sum)
+                arr.(idx) <- v /. sum);
+            arr
         in
         ratio max_x sum_x, ratio max_y sum_y
 
@@ -82,15 +83,45 @@ object(self)
         items <- {pos; span; item} :: items
 
     method layout r =
-        let cellSize = Size.{w=r.w /. gridSize.w; h=r.h /. gridSize.h} in
-        (* TODO - use the ratio arrays *)
-        (*let xarr, yarr = self#calcRatioArrays in*)
+        let xarr, yarr = self#calcRatioArrays in
+        let calc_prefix arr =
+            let len = Array.length arr in
+            let out = Array.create len 0. in
+            for i=0 to len-1 do
+                let sum = ref 0. in
+                for j=i-1 downto 0 do
+                    sum := !sum +. arr.(j)
+                done;
+                out.(i) <- !sum
+            done;
+            out
+        in
+        let calc_dims data = 
+            let x = Int.of_float data.pos.x
+            and y = Int.of_float data.pos.y
+            and w = Int.of_float data.span.w
+            and h = Int.of_float data.span.h in
+            let sz_w = ref 0. in
+            for i=x to x+w-1 do
+                sz_w := !sz_w +. xarr.(i)
+            done;
+            let sz_h = ref 0. in
+            for i=y to y+h-1 do
+                sz_h := !sz_h +. yarr.(i)
+            done;
+            Size.{w = !sz_w; h = !sz_h}
+        in
+        let prefix_x = calc_prefix xarr
+        and prefix_y = calc_prefix yarr in
         List.iter items (fun meta_data ->
+            let dims = calc_dims meta_data in
+            let xoff = prefix_x.(Int.(of_float meta_data.pos.x))
+            and yoff = prefix_y.(Int.(of_float meta_data.pos.y)) in
             meta_data.item#resize {
-                x=r.x +. cellSize.w*.meta_data.pos.x*.2.;
-                y=r.y +. cellSize.h*.meta_data.pos.y*.2.;
-                w=cellSize.w*.meta_data.span.w*.2.;
-                h=cellSize.h*.meta_data.span.h*.2.;
+                x=r.x +. xoff*.r.w;
+                y=r.y +. yoff*.r.h; 
+                w=dims.w*.r.w;
+                h=dims.h*.r.h;
             }
         )
 end
