@@ -3,6 +3,11 @@ type t = {
     y : float;
 }
 
+let zero = {
+    x = 0.;
+    y = 0.;
+}
+
 let sub a b = {
     x = b.x -. a.x;
     y = b.y -. a.y;

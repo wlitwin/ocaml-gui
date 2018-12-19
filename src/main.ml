@@ -13,6 +13,21 @@ class main app =
         255; 0; 0; 255; (**) 0; 255; 255; 255;
     |] in
     let _ = img#setImage img_data 2 2; img#setScale 10. in
+    let mk_lbl text =
+        new Label.label ~text app
+    in
+    let flow_labels = [
+        "Label 1";
+        "Label Amazing";
+        "Label Super Duper!";
+        "Label 4";
+        "Another Label";
+        "Wrapped Yet?";
+        "What about now?";
+        "Some really long strings in here";
+        "Word";
+        "Cool";
+    ] |> List.map ~f:mk_lbl in
 object(self)
     inherit Widget.basicWidget app as super
 
@@ -21,6 +36,7 @@ object(self)
     val h_layout_2 = new Layout.horizontalLayout
     val h_layout_3 = new Layout.horizontalLayout
     val h_layout_4 = new Layout.horizontalLayout
+    val flow_layout = new Layout.flowLayout
 
     method resize rect =
         super#resize rect;
@@ -32,9 +48,11 @@ object(self)
         tbox3#onDraw cr;
         tbox4#onDraw cr;
         lbl1#onDraw cr;
+        lbl2#onDraw cr;
         scroller#onDraw cr;
         dd#onDraw cr;
         img#onDraw cr;
+        List.iter flow_labels (fun l -> l#onDraw cr)
 
     initializer
         h_layout_1#addLayoutable (dd  :> Mixins.layoutable);
@@ -45,10 +63,12 @@ object(self)
         h_layout_3#addLayoutable (tbox4 :> Mixins.layoutable);
         h_layout_4#addLayoutable (lbl1 :> Mixins.layoutable);
         h_layout_4#addLayoutable (scroller :> Mixins.layoutable);
+        List.iter flow_labels (fun l -> flow_layout#addLayoutable (l :> Mixins.layoutable));
         v_layout#addLayoutable (h_layout_1 :> Mixins.layoutable);
         v_layout#addLayoutable (h_layout_2 :> Mixins.layoutable);
         v_layout#addLayoutable (h_layout_3 :> Mixins.layoutable);
         v_layout#addLayoutable (h_layout_4 :> Mixins.layoutable);
+        v_layout#addLayoutable (flow_layout :> Mixins.layoutable);
 
     inherit Mixins.focusManager app [(dd :> Mixins.handlesEvent); 
                                      (tbox1 :> Mixins.handlesEvent);
