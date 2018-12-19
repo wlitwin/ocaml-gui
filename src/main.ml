@@ -20,7 +20,7 @@ class main app =
         0; 255; 255; 255; (**) 0; 255; 0; 255;
     |] in
     let img3 = new Image.image app in
-    let _ = img3#setImage img_data2 2 2; img3#setScale 15. in
+    let _ = img3#setImage img_data2 2 2; img3#setScale 15.; img3#setKeepAspectRatio false in
     let mk_lbl text =
         new Label.label ~text app
     in

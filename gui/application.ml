@@ -41,7 +41,7 @@ object(self)
         GtkBase.Widget.queue_draw window#as_widget;
 
     method resize (size : Size.t) =
-        Stdio.printf "Resizing application %f %f\n%!" size.w size.h;
+        (*Stdio.printf "Resizing application %f %f\n%!" size.w size.h;*)
         self#widget#resize Rect.{x=0.;y=0.;w=size.w;h=size.h};
         self#redraw;
         false
@@ -71,7 +71,7 @@ object(self)
         true
 
     method private expose ev =
-        Stdio.printf "Main window got an expose event\n%!";
+        (*Stdio.printf "Main window got an expose event\n%!";*)
         let cr = Cairo_gtk.create drawing_area#misc#window in
         (*let allocation = drawing_area#misc#allocation in*)
         Util.timeit "draw" (fun _ ->

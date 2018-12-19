@@ -43,7 +43,7 @@ object(self)
             end else
                 rect.w /. imgw, rect.h /. imgh
         in
-        Stdio.printf "PAINTING %f %f %f %f - Scale is %f %f\n" rect.x rect.y rect.w rect.h scaleX scaleY;
+        (*Stdio.printf "PAINTING %f %f %f %f - Scale is %f %f\n" rect.x rect.y rect.w rect.h scaleX scaleY;*)
         let pat = CP.create_for_surface cimg in
         CP.set_filter pat filter;
         Cairo.translate cr rect.x rect.y;

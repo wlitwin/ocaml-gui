@@ -22,7 +22,6 @@ object(self)
     method virtual items : layoutable list
 
     method! resize r =
-        Stdio.printf " -- Layout Resizing to %f %f %f %f --\n%!" r.x r.y r.w r.h;
         super#resize r;
         self#layout r
 end

@@ -117,7 +117,6 @@ object(self)
             let ratio = (get sizes idx) /. sum in
             let width = ratio *. rect.w in
             item#resize {rect with x = !offset; w = width};
-            Stdio.printf "H Layout size %f %f %f %f\n" rect.x rect.y rect.w rect.h;
             offset := !offset +. width;
         ) items
 end
@@ -144,7 +143,6 @@ object(self)
             let ratio = (get sizes idx) /. sum in
             let height = ratio *. rect.h in
             item#resize {rect with y = !offset; h = height};
-            Stdio.printf "V Layout size %f %f %f %f\n" rect.x rect.y rect.w rect.h;
             offset := !offset +. height;
         ) items
 end
