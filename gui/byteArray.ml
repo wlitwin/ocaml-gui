@@ -6,7 +6,7 @@ module ByteArray = struct
     
     let create = create Bigarray.int8_unsigned Bigarray.c_layout
     let of_array = of_array Bigarray.int8_unsigned Bigarray.c_layout
-    let of_list = Util.(%) of_array Array.of_list
+    let of_list = Fn.compose of_array Array.of_list
     let empty = create 0
 end
 

@@ -99,11 +99,11 @@ object(self)
                 vertex.control#setGeometry r;
                 vertex.control#relayout cr;
                 Rect.union r bbox
-            ) (Util.some graph_layout).vertex_layouts Rect.empty_rect
+            ) (Option.value_exn graph_layout).vertex_layouts Rect.empty_rect
             |> Rect.size_of_rect;
         HE.iter Dgraph.XDot.(fun (e1, lbl, e2) edge_layout ->
             ()
-        ) (Util.some graph_layout).edge_layouts;
+        ) (Option.value_exn graph_layout).edge_layouts;
         debug (fun _ -> Printf.printf "BBOX IS %f %f\n" bbox.w bbox.h)
 
     method! preferredSize = 
