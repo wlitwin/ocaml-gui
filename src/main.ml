@@ -15,9 +15,17 @@ class main app =
     |] in
     let _ = img#setImage img_data 2 2; img#setScale 10. in
     let _ = img2#setImage img_data 2 2; img2#setScale 15. in
+    let img_data2 = ByteArray.ByteArray.of_array [|
+        0; 0; 255; 255; (**) 0; 128; 255; 255;
+        0; 255; 255; 255; (**) 0; 255; 0; 255;
+    |] in
+    let img3 = new Image.image app in
+    let _ = img3#setImage img_data2 2 2; img3#setScale 15. in
     let mk_lbl text =
         new Label.label ~text app
     in
+    let lbl3 = new Label.label ~text:"Cell (0,0)!" app in
+    let lbl4 = new Label.label ~text:"Cell (0,1)!" app in
     let flow_labels = [
         "Label 1";
         "Label Amazing";
@@ -39,6 +47,7 @@ object(self)
     val h_layout_3 = new Layout.horizontalLayout
     val h_layout_4 = new Layout.horizontalLayout
     val flow_layout = new Layout.flowLayout
+    val grid_layout = new Layout.gridLayout 4 4
 
     method resize rect =
         super#resize rect;
@@ -55,7 +64,10 @@ object(self)
         dd#onDraw cr;
         img#onDraw cr;
         img2#onDraw cr;
-        List.iter flow_labels (fun l -> l#onDraw cr)
+        List.iter flow_labels (fun l -> l#onDraw cr);
+        img3#onDraw cr;
+        lbl3#onDraw cr;
+        lbl4#onDraw cr;
 
     initializer
         h_layout_1#addLayoutable (dd  :> Mixins.layoutable);
@@ -74,7 +86,12 @@ object(self)
         v_layout#addLayoutable (h_layout_2 :> Mixins.layoutable);
         v_layout#addLayoutable (h_layout_3 :> Mixins.layoutable);
         v_layout#addLayoutable (h_layout_4 :> Mixins.layoutable);
+        v_layout#addLayoutable (grid_layout :> Mixins.layoutable);
         v_layout#addLayoutable (flow_layout :> Mixins.layoutable);
+
+        grid_layout#addToCell 0 0 (lbl3 :> Mixins.layoutable);
+        grid_layout#addToCell 0 1 (lbl4 :> Mixins.layoutable);
+        grid_layout#addToCell 1 0 ~rows:2 (img3 :> Mixins.layoutable);
 
     inherit Mixins.focusManager app [(dd :> Mixins.handlesEvent); 
                                      (tbox1 :> Mixins.handlesEvent);
