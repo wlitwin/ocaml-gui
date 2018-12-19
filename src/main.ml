@@ -8,11 +8,13 @@ class main app =
     let scroller = new Scroll.scrollArea app (lbl2 :> Widget.basicWidget) in
     let dd    = DropDown.(new dropDown app (Simple ["Option 1"; "Option 2"; "Option 3"; "Option 4"])) in
     let img   = new Image.image app in
+    let img2 = new Image.image app in
     let img_data = ByteArray.ByteArray.of_array [|
         0; 0; 255; 255; (**) 0; 255; 0; 255;
         255; 0; 0; 255; (**) 0; 255; 255; 255;
     |] in
     let _ = img#setImage img_data 2 2; img#setScale 10. in
+    let _ = img2#setImage img_data 2 2; img2#setScale 15. in
     let mk_lbl text =
         new Label.label ~text app
     in
@@ -52,6 +54,7 @@ object(self)
         scroller#onDraw cr;
         dd#onDraw cr;
         img#onDraw cr;
+        img2#onDraw cr;
         List.iter flow_labels (fun l -> l#onDraw cr)
 
     initializer
@@ -63,7 +66,10 @@ object(self)
         h_layout_3#addLayoutable (tbox4 :> Mixins.layoutable);
         h_layout_4#addLayoutable (lbl1 :> Mixins.layoutable);
         h_layout_4#addLayoutable (scroller :> Mixins.layoutable);
-        List.iter flow_labels (fun l -> flow_layout#addLayoutable (l :> Mixins.layoutable));
+        let add_lbl = (fun l -> flow_layout#addLayoutable (l :> Mixins.layoutable)) in
+        List.take flow_labels 5 |> List.iter ~f:add_lbl;
+        flow_layout#addLayoutable (img2 :> Mixins.layoutable);
+        List.drop flow_labels 5 |> List.iter ~f:add_lbl;
         v_layout#addLayoutable (h_layout_1 :> Mixins.layoutable);
         v_layout#addLayoutable (h_layout_2 :> Mixins.layoutable);
         v_layout#addLayoutable (h_layout_3 :> Mixins.layoutable);
