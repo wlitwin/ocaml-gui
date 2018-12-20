@@ -41,7 +41,7 @@ object(self)
         Mixins.Propagate
 
     method! paint cr =
-        super#drawBorder cr;
+        style#drawBorder cr rect;
         Array.iter choices (fun ch -> ch#onDraw cr)
 
     initializer
@@ -100,7 +100,7 @@ object(self)
         | None -> ()
 
     method! paint cr =
-        super#drawBorder cr;
+        style#drawBorder cr rect;
         Text.draw_text cr rect style self#selected;
 
     method! onDraw cr =

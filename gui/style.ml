@@ -23,5 +23,31 @@ class style = object(self)
     method setBorderSize size = borderSize <- size
     method setFontInfo info = fontInfo <- info
     method setBorderStyle style = borderStyle <- style
+
+    method fillBgColor cr (rect : Rect.t) =
+        Cairo.set_source_rgba cr bgColor.r bgColor.g bgColor.b bgColor.a;
+        Cairo.rectangle cr rect.x rect.y rect.w rect.h;
+        Cairo.fill cr;
+
+    method private setupBorderStyle cr =
+        Cairo.set_source_rgba cr fgColor.r fgColor.g fgColor.b fgColor.a;
+        Cairo.set_line_width cr borderSize;
+
+    method private drawRectangleBorder cr (rect : Rect.t) =
+        Cairo.rectangle cr rect.x rect.y rect.w rect.h;
+        self#setupBorderStyle cr;
+        Cairo.stroke cr;
+
+    method private drawRoundedBorder cr (rect : Rect.t) radius =
+        Paint.rounded_rect cr rect radius;
+        self#setupBorderStyle cr;
+        Cairo.stroke cr;
+
+    method drawBorder cr (rect : Rect.t) =
+        match borderStyle with
+        | NoBorder -> ()
+        | Rectangle -> self#drawRectangleBorder cr rect
+        | Rounded radius -> self#drawRoundedBorder cr rect radius
+
 end
 

@@ -10,3 +10,9 @@ let rounded_rect cr (rect : Rect.t) radius =
     arc cr (r.x + radius) (r.y + r.h -radius) radius (90. *. degrees) (180. *. degrees);
     arc cr (r.x + radius) (r.y + radius) radius (180. *. degrees) (270. *. degrees);
     Path.close cr;
+;;
+
+let clip cr (rect : Rect.t) =
+    Cairo.rectangle cr rect.x rect.y rect.w rect.h;
+    Cairo.clip cr;
+;;
