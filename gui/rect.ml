@@ -19,6 +19,13 @@ let outset r amt =
      h = r.h +. amt; }
 ;;
 
+let round r =
+    { x = Float.round r.x;
+      y = Float.round r.y;
+      w = Float.round r.w;
+      h = Float.round r.h; }
+;;
+
 let union r1 r2 = 
     let aabb1 = RectAabb.aabb_of_rect r1
     and aabb2 = RectAabb.aabb_of_rect r2 in

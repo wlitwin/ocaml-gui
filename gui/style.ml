@@ -26,8 +26,12 @@ class style = object(self)
 
     method fillBgColor cr (rect : Rect.t) =
         Cairo.set_source_rgba cr bgColor.r bgColor.g bgColor.b bgColor.a;
-        Cairo.rectangle cr rect.x rect.y rect.w rect.h;
-        Cairo.fill cr;
+        begin match borderStyle with
+        | NoBorder
+        | Rectangle -> Cairo.rectangle cr rect.x rect.y rect.w rect.h
+        | Rounded radius -> Paint.rounded_rect cr rect radius
+        end;
+        Cairo.fill cr
 
     method private setupBorderStyle cr =
         Cairo.set_source_rgba cr fgColor.r fgColor.g fgColor.b fgColor.a;
