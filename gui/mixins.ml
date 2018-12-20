@@ -1,3 +1,8 @@
+type event = .. 
+
+type event_result = Propagate
+                  | Stop
+
 class virtual layoutable =
 object
     val virtual id : int
@@ -26,10 +31,6 @@ object(self)
         self#layout r
 end
 
-type event = .. 
-
-type event_result = Propagate
-                  | Stop
 
 class virtual handlesEvent =
 object

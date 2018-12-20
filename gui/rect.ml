@@ -5,6 +5,20 @@ let empty = {
     w = 0.; h = 0.;
 }
 
+let inset r amt =
+    {x = r.x +. amt;
+     y = r.y +. amt;
+     w = r.w -. amt;
+     h = r.h -. amt; }
+;;
+
+let outset r amt =
+    {x = r.x +. amt;
+     y = r.y -. amt;
+     w = r.w +. amt;
+     h = r.h +. amt; }
+;;
+
 let union r1 r2 = 
     let aabb1 = RectAabb.aabb_of_rect r1
     and aabb2 = RectAabb.aabb_of_rect r2 in

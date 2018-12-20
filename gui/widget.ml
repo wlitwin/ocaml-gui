@@ -20,6 +20,9 @@ class basicWidget app = object(self)
 
     method preferredSize = self#size
 
+    method calcInnerRect r =
+        Rect.inset r style#borderSize
+
     method fillBgColor cr =
         let bgColor = style#bgColor in
         Cairo.set_source_rgba cr bgColor.r bgColor.g bgColor.b bgColor.a;
@@ -32,12 +35,25 @@ class basicWidget app = object(self)
             Cairo.clip cr;
         )
 
-    method drawBorder cr =
+    method private drawRectangleBorder cr =
         let color = style#fgColor in
         Cairo.rectangle cr rect.x rect.y rect.w rect.h;
         Cairo.set_source_rgba cr color.r color.g color.b color.a;
-        Cairo.set_line_width cr 10.;
+        Cairo.set_line_width cr style#borderSize;
         Cairo.stroke cr;
+
+    method private drawRoundedBorder cr radius =
+        Paint.rounded_rect cr rect radius;
+        let color = style#fgColor in
+        Cairo.set_source_rgba cr color.r color.g color.b color.a;
+        Cairo.set_line_width cr style#borderSize;
+        Cairo.stroke cr;
+
+    method drawBorder cr =
+        match style#borderStyle with
+        | NoBorder -> ()
+        | Rectangle -> self#drawRectangleBorder cr
+        | Rounded radius -> self#drawRoundedBorder cr radius
 
     method paint cr = ()
 
@@ -45,6 +61,7 @@ class basicWidget app = object(self)
         Cairo.save cr;
         self#clipDrawArea cr;
         self#fillBgColor cr;
+        self#drawBorder cr;
         Cairo.move_to cr rect.x rect.y;
         self#paint cr;
         Cairo.restore cr;
