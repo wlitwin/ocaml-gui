@@ -1,3 +1,7 @@
+let mk_lbl app text =
+    new Label.label ~text app
+;;
+
 class main app = 
     let tbox1 = new TextBox.textBoxWidget app in
     let tbox2 = new TextBox.textBoxWidget app in
@@ -21,9 +25,6 @@ class main app =
     |] in
     let img3 = new Image.image app in
     let _ = img3#setImage img_data2 2 2; img3#setScale 50.; img3#setKeepAspectRatio false in
-    let mk_lbl text =
-        new Label.label ~text app
-    in
     let lbl3 = new Label.label ~text:"Cell (0,0)!" app in
     let lbl4 = new Label.label ~text:"Cell (0,1)!" app in
     let lbl5 = new Label.label ~text:"Cell (2,0)!" app in
@@ -41,7 +42,7 @@ class main app =
         "Some really long strings in here";
         "Word";
         "Cool";
-    ] |> List.map ~f:mk_lbl in
+    ] |> List.map ~f:(mk_lbl app) in
 object(self)
     inherit Widget.basicWidget app as super
 
@@ -112,8 +113,26 @@ object(self)
 
 end
 
+class main2 app =
+    let list_labels = [
+        "Item 1"; "Item 2"; "Item 3"; "Item 4";
+    ] |> List.map ~f:(mk_lbl app) in
+    let coerce = List.map ~f:(fun item -> (item :> Widget.basicWidget)) in
+object(self)
+    inherit Widget.basicWidget app as super
+
+    val listBox = new ListBox.listBox app (coerce list_labels)
+
+    method resize r =
+        super#resize r;
+        listBox#resize r;
+
+    method onDraw cr =
+        listBox#onDraw cr
+end
+
 let _ =
     let app = new Application.application Rect.{w=400.; h=400.} in
-    let mainWidget = new main app in
+    let mainWidget = new main2 app in
     app#setWidget (mainWidget :> Widget.basicWidget);
     app#main

@@ -95,6 +95,7 @@ object(self)
 
     method main =
         gtk_window#set_resizable true;
+        (*Stdio.printf "SCREEN WIDTH %d\n" (Gdk.Screen.width ());*)
         (*gtk_window#set_resize_mode `IMMEDIATE;*)
         ignore(drawing_area#event#connect#expose (fun event -> self#expose event));
         ignore(gtk_window#connect#destroy GMain.quit);

@@ -5,7 +5,7 @@ type font_info = {
 }
 
 let default_font = {
-    fontSize = 32.0;
+    fontSize = 24.0;
     font = "Ubuntu Mono";
     weight = Cairo.Normal;
 }
