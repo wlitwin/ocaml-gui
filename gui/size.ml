@@ -7,6 +7,16 @@ let zero = {
     w=0.; h=0.;
 }
 
+let inset sz amt = {
+    w = sz.w -. amt;
+    h = sz.h -. amt;
+}
+
+let outset sz amt = {
+    w = sz.w +. amt;
+    h = sz.h +. amt;
+}
+
 let add s1 s2 = {
     w = s1.w +. s2.w;
     h = s1.h +. s2.h;

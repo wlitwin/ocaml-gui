@@ -5,6 +5,7 @@ object
     inherit layout
     val id = 0
     val items : layoutable DynArray.t = DynArray.make 1
+    val mutable eventHandlers = []
 
     method addLayoutable l = DynArray.add items l
 
@@ -20,12 +21,38 @@ type grid_data = {
     item : layoutable;
 }
 
+class fullLayout (item : Mixins.layoutable) =
+object(self)
+    inherit layout
+    val id = 0
+    val mutable eventHandlers = []
+    val mutable items = [item]
+
+    method item = List.hd_exn items
+
+    method items = items
+
+    method removeLayoutable _ =
+        items <- []
+
+    method preferredSize =
+        self#preferredSize
+
+    method addLayoutable l =
+        items <- [l]
+
+    method layout r =
+        self#item#postEvent (Resize r) |> ignore
+
+end
+
 class gridLayout dimx dimy =
 object(self)
     inherit layout
 
     val id = 0
     val gridSize = Size.{w=Float.of_int dimx; h=Float.of_int dimy}
+    val mutable eventHandlers = []
 
     val mutable items : grid_data list = []
 
@@ -122,7 +149,7 @@ object(self)
                 y=r.y +. yoff*.r.h; 
                 w=dims.w*.r.w;
                 h=dims.h*.r.h;
-            }
+            } |> ignore
         )
 end
 
@@ -147,7 +174,7 @@ object(self)
         DynArray.iteri (fun idx item ->
             let ratio = (get sizes idx) /. sum in
             let width = ratio *. rect.w in
-            item#resize {rect with x = !offset; w = width};
+            item#resize {rect with x = !offset; w = width} |> ignore;
             offset := !offset +. width;
         ) items
 end
@@ -173,7 +200,7 @@ object(self)
         DynArray.iteri (fun idx item ->
             let ratio = (get sizes idx) /. sum in
             let height = ratio *. rect.h in
-            item#resize {rect with y = !offset; h = height};
+            item#resize {rect with y = !offset; h = height} |> ignore;
             offset := !offset +. height;
         ) items
 end
@@ -204,7 +231,7 @@ object(self)
                 rowPos := Pos.{x=0.; y= !rowPos.y +. !maxy};
                 maxy := 0.;
             );
-            item#resize Rect.{x= !rowPos.x; y= !rowPos.y; w=sz.w; h=sz.h};
+            item#resize Rect.{x= !rowPos.x; y= !rowPos.y; w=sz.w; h=sz.h} |> ignore;
             add sz;
         ) items
 end

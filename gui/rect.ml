@@ -13,7 +13,7 @@ let inset r amt =
 ;;
 
 let outset r amt =
-    {x = r.x +. amt;
+    {x = r.x -. amt;
      y = r.y -. amt;
      w = r.w +. amt;
      h = r.h +. amt; }

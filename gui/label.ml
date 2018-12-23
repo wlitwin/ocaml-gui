@@ -11,7 +11,7 @@ class label ?(text="") app = object(self)
 
     method text = text
 
-    method preferredSize =
+    method contentSize =
         self#measureText Util.dummy_ctx 
         (if String.(=) text "" then "default_size" else text)
 
@@ -21,12 +21,25 @@ class label ?(text="") app = object(self)
     method drawText cr =
         Text.draw_text cr rect style text
 
+    initializer
+        style#setBorderStyle Rectangle
+
     method paint cr =
-        begin if isFocused then
+        let full = self#fullRect in
+        if isFocused then begin
+            style#setBorderColor Color.red;
+            style#setBorderSize 5.0;
+            self#resize full
+            (*
             Cairo.rectangle cr rect.x rect.y rect.w rect.h;
             Cairo.set_source_rgba cr 1. 0. 0. 1.;
             Cairo.set_line_width cr 10.;
             Cairo.stroke cr;
+            *)
+        end else begin
+            style#setBorderColor Color.black;
+            style#setBorderSize 1.0;
+            self#resize full
         end;
         self#drawText cr;
 end

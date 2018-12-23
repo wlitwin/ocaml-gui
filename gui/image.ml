@@ -23,7 +23,7 @@ object(self)
 
     method setScale s = scaleImage <- s
 
-    method! preferredSize = {
+    method! contentSize = {
         w=Float.(of_int (CI.get_width cimg) *. scaleImage);
         h=Float.(of_int (CI.get_height cimg) *. scaleImage);
     }

@@ -14,14 +14,6 @@ object(self)
 
     val vbox = new Layout.verticalLayout
 
-    method! resize r = ()
-
-    method loc (r : Rect.t) =
-        let sz = vbox#preferredSize in
-        let r  = {r with w=sz.w+.10.; h=sz.h+.10.} in
-        rect <- r;
-        vbox#layout {x=r.x+.5.; y=r.y+.5.; w=r.w-.10.; h=r.h-.10.};
-
     method private selected =
         Option.value_exn
             (Array.findi 
@@ -40,13 +32,11 @@ object(self)
         end;
         Mixins.Propagate
 
-    method! paint cr =
-        style#drawBorder cr rect;
-        Array.iter choices (fun ch -> ch#onDraw cr)
-
     initializer
         Array.iter choices
-            (fun ch -> vbox#addLayoutable (ch :> Mixins.layoutable))
+            (fun ch -> vbox#addLayoutable (ch :> Mixins.layoutable));
+        self#setLayout vbox;
+        style#setBGColor Color.orange;
 
     inherit Mixins.focusManager app 
         (Array.to_list (Array.map choices coerce))
@@ -74,7 +64,9 @@ object(self)
 
     method private createPopup =
         let ddp = new dropDownPopup app choices self#popUpCallback in
-        ddp#loc {rect with y=rect.y+.rect.h};
+        let dd_rect = (*{rect with y=rect.y+.rect.h} in*) rect in
+        Stdio.printf "DD RECT %f %f %f %f\n" dd_rect.x dd_rect.y dd_rect.w dd_rect.h;
+        ddp#resize dd_rect;
         popUp <- Some ddp
 
     method! postEvent evt =
@@ -91,16 +83,15 @@ object(self)
         end;
         Mixins.Propagate
 
-    method! preferredSize =
+    method! contentSize =
         Text.measure_text style#fontInfo self#selected
 
     method private drawDropDown cr =
         match popUp with
-        | Some popUp -> popUp#onDraw cr
+        | Some popUp -> popUp#postEvent (Mixins.Paint cr) |> ignore
         | None -> ()
 
     method! paint cr =
-        style#drawBorder cr rect;
         Text.draw_text cr rect style self#selected;
 
     method! onDraw cr =

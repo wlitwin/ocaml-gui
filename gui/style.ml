@@ -5,7 +5,7 @@ type border_style = NoBorder
 class style = object(self)
     val mutable bgColor = Color.white
     val mutable fgColor = Color.black;
-    val mutable borderColor = Color.none;
+    val mutable borderColor = Color.black;
     val mutable borderSize = 1.0;
     val mutable fontInfo = Text.default_font;
     val mutable borderStyle = Rectangle
@@ -24,6 +24,35 @@ class style = object(self)
     method setFontInfo info = fontInfo <- info
     method setBorderStyle style = borderStyle <- style
 
+    method hasBorder = 
+        match borderStyle with
+        | NoBorder -> false
+        | _ -> true
+
+    method outsetSizeByBorder size =
+        if self#hasBorder then Size.{
+            w = size.w +. borderSize *. 2.0;
+            h = size.h +. borderSize *. 2.0;
+        } else size
+
+    method outsetRectByBorder rect =
+        if self#hasBorder then Rect.{
+            x = rect.x -. borderSize;
+            y = rect.y -. borderSize;
+            w = rect.w +. borderSize*.2.0;
+            h = rect.h +. borderSize*.2.0;
+        }
+        else rect
+
+    method insetRectByBorder rect =
+        if self#hasBorder then Rect.{
+            x = rect.x +. borderSize;
+            y = rect.y +. borderSize;
+            w = rect.w -. borderSize*.2.0;
+            h = rect.h -. borderSize*.2.0;
+        }
+        else rect
+
     method fillBgColor cr (rect : Rect.t) =
         Cairo.set_source_rgba cr bgColor.r bgColor.g bgColor.b bgColor.a;
         begin match borderStyle with
@@ -34,10 +63,16 @@ class style = object(self)
         Cairo.fill cr
 
     method private setupBorderStyle cr =
-        Cairo.set_source_rgba cr fgColor.r fgColor.g fgColor.b fgColor.a;
+        Cairo.set_source_rgba cr borderColor.r borderColor.g borderColor.b borderColor.a;
         Cairo.set_line_width cr borderSize;
 
     method private drawRectangleBorder cr (rect : Rect.t) =
+        let rect = Rect.{
+            x = rect.x +. borderSize*.0.5;
+            y = rect.y +. borderSize*.0.5;
+            w = rect.w -. borderSize;
+            h = rect.h -. borderSize;
+        } in
         Cairo.rectangle cr rect.x rect.y rect.w rect.h;
         self#setupBorderStyle cr;
         Cairo.stroke cr;

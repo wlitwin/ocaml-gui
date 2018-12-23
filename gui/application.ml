@@ -42,7 +42,7 @@ object(self)
 
     method resize (size : Size.t) =
         (*Stdio.printf "Resizing application %f %f\n%!" size.w size.h;*)
-        self#widget#resize Rect.{x=0.;y=0.;w=size.w;h=size.h};
+        self#widget#postEvent (Mixins.Resize Rect.{x=0.;y=0.;w=size.w;h=size.h}) |> ignore;
         self#redraw;
         false
 

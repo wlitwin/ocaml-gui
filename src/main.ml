@@ -54,29 +54,6 @@ object(self)
     val flow_layout = new Layout.flowLayout
     val grid_layout = new Layout.gridLayout 3 3
 
-    method resize rect =
-        super#resize rect;
-        v_layout#layout rect;
-
-    method! onDraw cr =
-        tbox1#onDraw cr;
-        tbox2#onDraw cr;
-        tbox3#onDraw cr;
-        tbox4#onDraw cr;
-        lbl1#onDraw cr;
-        lbl2#onDraw cr;
-        scroller#onDraw cr;
-        dd#onDraw cr;
-        img#onDraw cr;
-        img2#onDraw cr;
-        List.iter flow_labels (fun l -> l#onDraw cr);
-        img3#onDraw cr;
-        lbl3#onDraw cr;
-        lbl4#onDraw cr;
-        lbl5#onDraw cr;
-        lbl6#onDraw cr;
-        lbl7#onDraw cr;
-
     initializer
         h_layout_1#addLayoutable (dd  :> Mixins.layoutable);
         h_layout_1#addLayoutable (img :> Mixins.layoutable);
@@ -104,6 +81,8 @@ object(self)
         grid_layout#addToCell 2 1 (lbl6 :> Mixins.layoutable);
         grid_layout#addToCell 0 2 ~cols:3 (lbl7 :> Mixins.layoutable);
 
+        self#setLayout v_layout
+
     inherit Mixins.focusManager app [(dd :> Mixins.handlesEvent); 
                                      (tbox1 :> Mixins.handlesEvent);
                                      (tbox2 :> Mixins.handlesEvent);
@@ -114,25 +93,30 @@ object(self)
 end
 
 class main2 app =
+    let coerce = List.map ~f:(fun item -> (item :> Widget.basicWidget)) in
     let list_labels = [
         "Item 1"; "Item 2"; "Item 3"; "Item 4";
-    ] |> List.map ~f:(mk_lbl app) in
-    let coerce = List.map ~f:(fun item -> (item :> Widget.basicWidget)) in
+    ] |> List.map ~f:(mk_lbl app) |> coerce in
 object(self)
     inherit Widget.basicWidget app as super
 
-    val listBox = new ListBox.listBox app (coerce list_labels)
+    val lbox = new ListBox.listBox app list_labels
+    val lbl = new Label.label ~text:"Hello!" app
 
-    method resize r =
-        super#resize r;
-        listBox#resize r;
-
-    method onDraw cr =
-        listBox#onDraw cr
+    initializer
+        (*style#setBorderStyle NoBorder; (* Top-level widget shouldn't have a border *)*)
+        let vbox = new Layout.verticalLayout in
+        (*let layout = new Layout.fullLayout (lbl :> Mixins.layoutable) in*)
+        self#style#setBGColor Color.green;
+        lbl#style#setBorderColor Color.yellow;
+        lbl#style#setBGColor (Color.red);
+        vbox#addLayoutable (lbl :> Mixins.layoutable);
+        vbox#addLayoutable (lbox :> Mixins.layoutable);
+        self#setLayout (vbox :> Mixins.layout)
 end
 
 let _ =
     let app = new Application.application Rect.{w=400.; h=400.} in
-    let mainWidget = new main2 app in
+    let mainWidget = new main app in
     app#setWidget (mainWidget :> Widget.basicWidget);
     app#main

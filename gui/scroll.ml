@@ -80,13 +80,13 @@ object(self)
         end;
         Mixins.Propagate
 
-    method! resize r =
-        super#resize r;
+    method! onResize r =
+        super#onResize r |> ignore;
         let open Float in
         let sz = cont#preferredSize in
         let w = max rect.w sz.w
         and h = max rect.h sz.h in
-        cont#resize Rect.{x=0.; y=0.; w; h};
+        cont#onResize Rect.{x=0.; y=0.; w; h} |> ignore;
         (* Position the scroll bars *)
         let barSizeH = vertScroller#barSize in
         let barSizeW = horzScroller#barSize in
@@ -96,6 +96,7 @@ object(self)
                                   y=rect.y; h=rect.h; w=barSizeW};
         horzScroller#resize Rect.{x=rect.x;
                                   y=rect.y +. rect.h -. barSizeH; h=barSizeH; w=rect.w};
+        Mixins.Propagate
 
     method ensureVisible (region : Rect.t) =
         let open Float in
@@ -125,7 +126,7 @@ object(self)
     method offsetY =
         vertScroller#position *. (cont#rect.h -. self#rect.h)
 
-    method! preferredSize =
+    method! contentSize =
         cont#preferredSize
 
     method! paint cr =

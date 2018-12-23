@@ -3,34 +3,6 @@ type event = ..
 type event_result = Propagate
                   | Stop
 
-class virtual layoutable =
-object
-    val virtual id : int
-    val mutable virtual rect : Rect.t
-    
-    method virtual preferredSize : Size.t
-    method id   = id
-    method size = RectSize.size_of_rect rect
-    method pos  = RectPos.pos_of_rect rect
-    method rect = rect
-    method resize r = rect <- r
-end
-
-class virtual layout =
-object(self)
-    inherit layoutable as super
-    val mutable rect = Rect.empty
-
-    method virtual addLayoutable : layoutable -> unit
-    method virtual removeLayoutable : int -> unit
-    method virtual layout : Rect.t -> unit
-    method virtual items : layoutable list
-
-    method! resize r =
-        super#resize r;
-        self#layout r
-end
-
 
 class virtual handlesEvent =
 object
@@ -48,6 +20,61 @@ object
                  | Propagate -> Cs.Continue Propagate
             )
             ~finish:Fn.id
+end
+
+type event += Resize of Rect.t
+
+class virtual layoutable =
+object(self)
+    inherit handlesEvent
+
+    val virtual id : int
+    val mutable virtual rect : Rect.t
+    
+    method virtual preferredSize : Size.t
+    method id   = id
+    method size = RectSize.size_of_rect rect
+    method pos  = RectPos.pos_of_rect rect
+    method rect = rect
+
+    method resize r =
+        self#postEvent (Resize r) |> ignore
+
+    method onResize r =
+        rect <- r;
+        Propagate
+
+    initializer
+        eventHandlers <- (function
+            | Resize r -> self#onResize r;
+            | _ -> Propagate
+        ) :: eventHandlers
+end
+
+type event += Paint of Cairo.context
+
+class virtual layout =
+object(self)
+    inherit layoutable as super
+    val mutable rect = Rect.empty
+
+    method virtual addLayoutable : layoutable -> unit
+    method virtual removeLayoutable : int -> unit
+    method virtual layout : Rect.t -> unit
+    method virtual items : layoutable list
+
+    method! onResize r =
+        let res = super#onResize r in
+        self#layout r;
+        res 
+
+    initializer
+        let forward item evt = item#postEvent evt |> ignore in
+        eventHandlers <- (function
+            | Paint cr -> 
+                List.iter self#items (fun item -> forward item (Paint cr));
+                Propagate
+            | _ -> Propagate) :: eventHandlers
 end
 
 type mouse_button =
@@ -104,8 +131,6 @@ object
 
     method style = style
 end
-
-type event += Paint of Cairo.context
 
 class virtual drawable =
 object(self)
