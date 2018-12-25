@@ -22,10 +22,13 @@ class basicWidget app = object(self)
     method invalidate : unit =
         app#redraw
 
-    method contentSize = self#size
+    method contentSize = 
+        match layout with
+        | Some l -> l#preferredSize
+        | None -> self#size
 
     method private fullRect =
-        style#outsetRectByBorder rect
+        style#borderStyle#outsetRectByBorder rect
 
     method clipDrawArea cr =
         if shouldClip then Paint.clip cr self#fullRect
@@ -39,19 +42,19 @@ class basicWidget app = object(self)
     (* TODO - move this into mixins
      *)
     method onResize r =
-        rect <- style#insetRectByBorder r;
+        rect <- style#borderStyle#insetRectByBorder r;
         self#sendEventToLayout (Resize rect);
         Mixins.Propagate
 
     method preferredSize =
-        style#outsetSizeByBorder self#contentSize
+        style#borderStyle#outsetSizeByBorder self#contentSize
 
     method onDraw cr =
         Cairo.save cr;
         self#clipDrawArea cr;
         let fullRect = self#fullRect in
         style#fillBgColor cr fullRect;
-        style#drawBorder cr fullRect;
+        style#borderStyle#drawBorder cr fullRect;
         Cairo.move_to cr rect.x rect.y;
         self#paint cr;
         Cairo.restore cr;
