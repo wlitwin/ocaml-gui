@@ -53,6 +53,8 @@ end
 
 type event += Paint of Cairo.context
 
+type 'a layoutSubclass = 'a constraint 'a = #layoutable
+
 class virtual layout =
 object(self)
     inherit layoutable as super

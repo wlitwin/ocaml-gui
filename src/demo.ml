@@ -2,6 +2,12 @@ let mk_lbl app text =
     new Label.label ~text app
 ;;
 
+type 'a layoutable = 'a constraint 'a = #Mixins.layoutable
+type 'a handlesEvent = 'a constraint 'a = #Mixins.handlesEvent
+
+let coerce (l : _ layoutable) = (l :> Mixins.layoutable) 
+let coerceEvent (e : _ handlesEvent) = (e :> Mixins.handlesEvent)
+
 class main app = 
     let tbox1 = new TextBox.textBoxWidget app in
     let tbox2 = new TextBox.textBoxWidget app in
@@ -55,42 +61,42 @@ object(self)
     val grid_layout = new Layout.gridLayout 3 3
 
     initializer
-        h_layout_1#addLayoutable (dd  :> Mixins.layoutable);
-        h_layout_1#addLayoutable (img :> Mixins.layoutable);
-        h_layout_2#addLayoutable (tbox1 :> Mixins.layoutable);
-        h_layout_2#addLayoutable (tbox2 :> Mixins.layoutable);
-        h_layout_3#addLayoutable (tbox3 :> Mixins.layoutable);
-        h_layout_3#addLayoutable (tbox4 :> Mixins.layoutable);
-        h_layout_4#addLayoutable (lbl1 :> Mixins.layoutable);
-        h_layout_4#addLayoutable (scroller :> Mixins.layoutable);
-        let add_lbl = (fun l -> flow_layout#addLayoutable (l :> Mixins.layoutable)) in
+        h_layout_1#addLayoutable (coerce dd);
+        h_layout_1#addLayoutable (coerce img);
+        h_layout_2#addLayoutable (coerce tbox1);
+        h_layout_2#addLayoutable (coerce tbox2);
+        h_layout_3#addLayoutable (coerce tbox3);
+        h_layout_3#addLayoutable (coerce tbox4);
+        h_layout_4#addLayoutable (coerce lbl1);
+        h_layout_4#addLayoutable (coerce scroller);
+        let add_lbl = (Fn.compose flow_layout#addLayoutable coerce) in
         List.take flow_labels 5 |> List.iter ~f:add_lbl;
-        flow_layout#addLayoutable (img2 :> Mixins.layoutable);
+        flow_layout#addLayoutable (coerce img2);
         List.drop flow_labels 5 |> List.iter ~f:add_lbl;
-        v_layout#addLayoutable (h_layout_1 :> Mixins.layoutable);
-        v_layout#addLayoutable (h_layout_2 :> Mixins.layoutable);
-        v_layout#addLayoutable (h_layout_3 :> Mixins.layoutable);
-        v_layout#addLayoutable (h_layout_4 :> Mixins.layoutable);
-        v_layout#addLayoutable (grid_layout :> Mixins.layoutable);
-        v_layout#addLayoutable (flow_layout :> Mixins.layoutable);
+        v_layout#addLayoutable (coerce h_layout_1);
+        v_layout#addLayoutable (coerce h_layout_2);
+        v_layout#addLayoutable (coerce h_layout_3);
+        v_layout#addLayoutable (coerce h_layout_4);
+        v_layout#addLayoutable (coerce grid_layout);
+        v_layout#addLayoutable (coerce flow_layout);
 
-        grid_layout#addToCell 0 0 (lbl3 :> Mixins.layoutable);
-        grid_layout#addToCell 0 1 (lbl4 :> Mixins.layoutable);
-        grid_layout#addToCell 1 0 ~rows:2 (img3 :> Mixins.layoutable);
+        grid_layout#addToCell 0 0 (coerce lbl3);
+        grid_layout#addToCell 0 1 (coerce lbl4);
+        grid_layout#addToCell 1 0 ~rows:2 (coerce img3);
         img3#style#borderStyle#setSize 20.;
         img3#style#borderStyle#setColor Color.{r=0.4; g=0.4; b=0.4; a=1.};
-        grid_layout#addToCell 2 0 (lbl5 :> Mixins.layoutable);
-        grid_layout#addToCell 2 1 (lbl6 :> Mixins.layoutable);
-        grid_layout#addToCell 0 2 ~cols:3 (lbl7 :> Mixins.layoutable);
+        grid_layout#addToCell 2 0 (coerce lbl5);
+        grid_layout#addToCell 2 1 (coerce lbl6);
+        grid_layout#addToCell 0 2 ~cols:3 (coerce lbl7);
 
         self#setLayout v_layout
 
-    inherit Mixins.focusManager app [(dd :> Mixins.handlesEvent); 
-                                     (tbox1 :> Mixins.handlesEvent);
-                                     (tbox2 :> Mixins.handlesEvent);
-                                     (tbox4 :> Mixins.handlesEvent);
-                                     (tbox3 :> Mixins.handlesEvent);
-                                     (scroller :> Mixins.handlesEvent)]
+    inherit Mixins.focusManager app [(coerceEvent dd); 
+                                     (coerceEvent tbox1);
+                                     (coerceEvent tbox2);
+                                     (coerceEvent tbox4);
+                                     (coerceEvent tbox3);
+                                     (coerceEvent scroller)]
 
 end
 
