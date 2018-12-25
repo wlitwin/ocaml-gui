@@ -8,5 +8,5 @@ object(self)
         let coerce (item : 'a) = (item :> Mixins.layoutable) in
         let v_layout = new Layout.verticalLayout in
         List.iter items (Fn.compose v_layout#addLayoutable coerce);
-        self#setLayout v_layout
+        self#setLayout (v_layout :> Mixins.layout)
 end

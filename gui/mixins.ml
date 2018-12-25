@@ -60,7 +60,7 @@ object(self)
     inherit layoutable as super
     val mutable rect = Rect.empty
 
-    method virtual addLayoutable : layoutable -> unit
+    method virtual addLayoutable : 'a. 'a layoutSubclass -> unit
     method virtual removeLayoutable : int -> unit
     method virtual layout : Rect.t -> unit
     method virtual items : layoutable list

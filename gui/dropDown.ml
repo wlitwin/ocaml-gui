@@ -34,8 +34,8 @@ object(self)
 
     initializer
         Array.iter choices
-            (fun ch -> vbox#addLayoutable (ch :> Mixins.layoutable));
-        self#setLayout vbox;
+            (fun ch -> vbox#addLayoutable ch);
+        self#setLayout (vbox :> Mixins.layout);
         style#setBGColor Color.orange;
 
     inherit Mixins.focusManager app 

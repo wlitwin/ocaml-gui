@@ -61,24 +61,24 @@ object(self)
     val grid_layout = new Layout.gridLayout 3 3
 
     initializer
-        h_layout_1#addLayoutable (coerce dd);
-        h_layout_1#addLayoutable (coerce img);
-        h_layout_2#addLayoutable (coerce tbox1);
-        h_layout_2#addLayoutable (coerce tbox2);
-        h_layout_3#addLayoutable (coerce tbox3);
-        h_layout_3#addLayoutable (coerce tbox4);
-        h_layout_4#addLayoutable (coerce lbl1);
-        h_layout_4#addLayoutable (coerce scroller);
+        h_layout_1#addLayoutable dd;
+        h_layout_1#addLayoutable img;
+        h_layout_2#addLayoutable tbox1;
+        h_layout_2#addLayoutable tbox2;
+        h_layout_3#addLayoutable tbox3;
+        h_layout_3#addLayoutable tbox4;
+        h_layout_4#addLayoutable lbl1;
+        h_layout_4#addLayoutable scroller;
         let add_lbl = (Fn.compose flow_layout#addLayoutable coerce) in
         List.take flow_labels 5 |> List.iter ~f:add_lbl;
-        flow_layout#addLayoutable (coerce img2);
+        flow_layout#addLayoutable img2;
         List.drop flow_labels 5 |> List.iter ~f:add_lbl;
-        v_layout#addLayoutable (coerce h_layout_1);
-        v_layout#addLayoutable (coerce h_layout_2);
-        v_layout#addLayoutable (coerce h_layout_3);
-        v_layout#addLayoutable (coerce h_layout_4);
-        v_layout#addLayoutable (coerce grid_layout);
-        v_layout#addLayoutable (coerce flow_layout);
+        v_layout#addLayoutable h_layout_1;
+        v_layout#addLayoutable h_layout_2;
+        v_layout#addLayoutable h_layout_3;
+        v_layout#addLayoutable h_layout_4;
+        v_layout#addLayoutable grid_layout;
+        v_layout#addLayoutable flow_layout;
 
         grid_layout#addToCell 0 0 (coerce lbl3);
         grid_layout#addToCell 0 1 (coerce lbl4);
@@ -89,7 +89,7 @@ object(self)
         grid_layout#addToCell 2 1 (coerce lbl6);
         grid_layout#addToCell 0 2 ~cols:3 (coerce lbl7);
 
-        self#setLayout v_layout
+        self#setLayout (v_layout :> Mixins.layout)
 
     inherit Mixins.focusManager app [(coerceEvent dd); 
                                      (coerceEvent tbox1);

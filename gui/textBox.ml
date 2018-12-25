@@ -4,7 +4,6 @@ class textBoxWidget app = object(self)
     val mutable text : string = ""
 
     method setText new_text =
-        Stdio.printf "Setting text %s\n" new_text;
         text <- new_text
 
     method text = text

@@ -12,5 +12,5 @@ object(self)
         let layout = new Layout.horizontalLayout in
         layout#addLayoutable (label :> Mixins.layoutable);
         layout#addLayoutable (textBox :> Mixins.layoutable);
-        self#setLayout layout
+        self#setLayout (layout :> Mixins.layout)
 end

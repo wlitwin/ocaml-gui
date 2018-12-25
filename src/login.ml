@@ -12,7 +12,7 @@ object(self)
             For (lName, [Loc (WLeft 10., WTop 10.); Anchors [Top; Left; Right]]);
             For (lPass, [Loc (iLeft lName 0., iBot lName 10.); Anchors [Top; Left; Right]]);
         ] in
-        self#setLayout (new anchorLayout rules)
+        self#setLayout (new anchorLayout rules :> Mixins.layout)
 
     inherit Mixins.focusManager app [(name :> Mixins.handlesEvent);
                                      (password :> Mixins.handlesEvent)]

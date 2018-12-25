@@ -7,7 +7,7 @@ object
     val items : layoutable DynArray.t = DynArray.make 1
     val mutable eventHandlers = []
 
-    method addLayoutable l = DynArray.add items l
+    method addLayoutable l = DynArray.add items (l :> layoutable)
 
     method removeLayoutable id =
         DynArray.filter (fun l -> l#id <> id) items
@@ -39,7 +39,7 @@ object(self)
         self#preferredSize
 
     method addLayoutable l =
-        items <- [l]
+        items <- [(l :> layoutable)]
 
     method layout r =
         self#item#postEvent (Resize r) |> ignore

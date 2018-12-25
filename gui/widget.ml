@@ -1,5 +1,7 @@
 open Mixins
 
+type 'a layout = 'a constraint 'a = #Mixins.layout
+
 class basicWidget app = object(self)
     val id = 0
     val style = new Style.style
