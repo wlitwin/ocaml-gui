@@ -1,6 +1,6 @@
 open Mixins
 
-type 'a layout = 'a constraint 'a = #Mixins.layout
+type 'a layout = 'a constraint 'a = Mixins.layout
 
 class basicWidget app = object(self)
     val id = 0
@@ -8,7 +8,7 @@ class basicWidget app = object(self)
     val application = app
     val mutable eventHandlers = []
     val mutable rect = Rect.empty
-    val mutable shouldClip = false
+    val mutable shouldClip = true
     val mutable layout : Mixins.layout option = None
 
     inherit styleable

@@ -9,8 +9,24 @@ object(self)
         let lName = (name :> Mixins.layoutable) in
         let lPass = (password :> Mixins.layoutable) in
         let rules = [
-            For (lName, [Loc (WLeft 10., WTop 10.); Anchors [Top; Left; Right]]);
-            For (lPass, [Loc (iLeft lName 0., iBot lName 10.); Anchors [Top; Left; Right]]);
+            { item=lName;
+              loc={
+                  top=WTop 10.;
+                  left=WLeft 10.;
+                  right=WRight ~-.10.;
+                  bottom = PreferredH;
+              };
+              anchors={left=true; right=true; top=true; bottom=false}
+            };
+            { item=lPass;
+              loc={
+                  top=IBottom (lName, 10.);
+                  left=WLeft 10.;
+                  right=WRight ~-.10.;
+                  bottom = PreferredH;
+              };
+              anchors={left=true; right=true; top=true; bottom=false}
+            };
         ] in
         self#setLayout (new anchorLayout rules :> Mixins.layout)
 
