@@ -60,4 +60,7 @@ class basicWidget app = object(self)
         Cairo.move_to cr rect.x rect.y;
         self#paint cr;
         Cairo.restore cr;
+
+    initializer
+        rect <- Rect.{x=0.; y=0.; w=10.; h=10.}
 end

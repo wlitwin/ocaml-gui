@@ -1,10 +1,5 @@
 type item = Mixins.layoutable
 
-type anchor = Left
-            | Top
-            | Bottom
-            | Right
-
 type loc = (* Relative to the window/layout rect top/bot/etc *)
          | WTop of float
          | WBottom of float
@@ -19,9 +14,6 @@ type loc = (* Relative to the window/layout rect top/bot/etc *)
          | PreferredW
          | PreferredH
 
-type constraint_ = Anchors of anchor list
-                 | Loc of loc * loc * loc * loc
-
 module Location = struct
     type t = {
         top : loc;
@@ -31,18 +23,15 @@ module Location = struct
     }
 end
 
-type anchors = {
-    left : bool;
-    right : bool;
-    top : bool;
-    bottom : bool;
-}
-
 type constraints = {
     item : item;
     loc : Location.t;
-    anchors : anchors;
 }
+
+type dep_field = DLeft
+               | DRight
+               | DTop
+               | DBottom
 
 let get_dep = function
     | ITop (item, _)
