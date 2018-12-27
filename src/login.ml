@@ -40,7 +40,7 @@ object(self)
               loc={
                   top=IBottom (lPass, 10.);
                   left=WLeft 10.;
-                  right=WLeft 110.;
+                  right=IRight (lblPass, 0.);
                   bottom = PreferredH;
               };
             };
@@ -48,7 +48,7 @@ object(self)
               loc={
                   top=IBottom (lblName, 10.);
                   left=WLeft 10.;
-                  right=IRight (lblName, 0.);
+                  right=PreferredW;
                   bottom = PreferredH;
               };
             };
