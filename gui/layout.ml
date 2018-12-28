@@ -110,7 +110,6 @@ object(self)
         items <- {pos; span; item} :: items
 
     method layout r =
-        Stdio.printf "Running grid layout!\n";
         let xarr, yarr = self#calcRatioArrays in
         let calc_prefix arr =
             let len = Array.length arr in
@@ -145,7 +144,6 @@ object(self)
             let dims = calc_dims meta_data in
             let xoff = prefix_x.(Int.(of_float meta_data.pos.x))
             and yoff = prefix_y.(Int.(of_float meta_data.pos.y)) in
-            Stdio.printf "OFF %f %f\n" xoff yoff;
             meta_data.item#resize {
                 x=r.x +. xoff*.r.w;
                 y=r.y +. yoff*.r.h; 

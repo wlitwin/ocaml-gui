@@ -1,18 +1,39 @@
 type item = Mixins.layoutable
 
+type dep_field = DLeft
+               | DRight
+               | DTop
+               | DBottom
+
+type item_dep = item * dep_field
+
+module HP = Hashtbl.Poly
+
+type field_tbl = (item_dep, float) HP.t
+
 type loc = (* Relative to the window/layout rect top/bot/etc *)
-         | WTop of float
-         | WBottom of float
-         | WLeft of float
-         | WRight of float
+         | WTop
+         | WBottom
+         | WLeft
+         | WRight
          (* Relative to an item *)
-         | ITop of item * float
-         | IBottom of item * float
-         | ILeft of item * float
-         | IRight of item * float
+         | ITop of item
+         | IBottom of item
+         | ILeft of item
+         | IRight of item
          (* Preferred *)
-         | PreferredW
-         | PreferredH
+         | PreferredW of item
+         | PreferredH of item
+         (* Combinations *)
+         | Add of loc list
+         | Sub of loc list
+         | Mul of loc list
+         | Div of loc list
+         | Max of loc list
+         | Min of loc list
+         | Fun of (field_tbl -> float)
+         | FunDep of item_dep list * (field_tbl -> float)
+         | Const of float
 
 module Location = struct
     type t = {
@@ -28,26 +49,27 @@ type constraints = {
     loc : Location.t;
 }
 
-type dep_field = DLeft
-               | DRight
-               | DTop
-               | DBottom
-
-type field_dep = {
-    source : dep_field;
-    depends_on : dep_field;
-    from : item;
-}
-
-let get_dep = function
-    | ITop (item, _) -> Some (item, DTop)
-    | IBottom (item, _) -> Some (item, DBottom)
-    | ILeft (item, _) -> Some (item, DLeft)
-    | IRight (item, _) -> Some (item, DRight)
-    | _ -> None
+let rec get_deps = function
+    | ITop item -> [item, DTop]
+    | IBottom item -> [item, DBottom]
+    | ILeft item -> [item, DLeft]
+    | IRight item -> [item, DRight]
+    | Add lst
+    | Sub lst
+    | Mul lst
+    | Div lst
+    | Max lst
+    | Min lst -> List.map lst get_deps |> List.concat
+    | FunDep (lst, _) -> lst
+    | PreferredW item -> [(item, DLeft)]
+    | PreferredH item -> [(item, DTop)]
+    | WTop
+    | WLeft
+    | WRight
+    | WBottom
+    | Fun _
+    | Const _ -> []
 ;;
-
-module HP = Hashtbl.Poly
 
 type field_tuple = item * loc * dep_field
 
@@ -71,8 +93,6 @@ type dep_graph = {
     mark n permanently
     add n to head of L
 *)
-
-type item_dep = item * dep_field
 
 let depth_sort (tbl : (item_dep, item_dep list) HP.t) (all : field_tuple list) : item_dep list =
     let sorted = ref [] in
@@ -109,26 +129,15 @@ let calc_dep_graph lst =
         :: (c.item, c.loc.bottom, DBottom)
         :: (c.item, c.loc.left, DLeft)
         :: (c.item, c.loc.right, DRight)
-        :: accum)
-    |> List.map ~f:(function
-        (* Hacky, dummy to force the field update order *)
-        | item, PreferredW, DRight -> item, ILeft (item, 1.), DRight
-        | item, PreferredH, DBottom -> item, ITop  (item, 1.), DBottom
-        | item, PreferredW, _
-        | item, PreferredH, _ -> failwith "PreferredW/H dep on not right/bottom"
-        | tup -> tup
-    )
-    in
-    Stdio.printf "LIST SIZE %d\n" (List.length lst);
+        :: accum
+    ) in
     let tbl = HP.create() in
     List.iter lst (fun (item, loc, depField) ->
         let key = (item, depField) in
-        match get_dep loc with
-        | None -> HP.set tbl key []
-        | Some depInfo ->
-            match HP.find tbl key with
-            | Some lst -> HP.set tbl key (depInfo :: lst)
-            | None -> HP.set tbl key [depInfo]
+        let dep_lst = get_deps loc in
+        match HP.find tbl key with
+        | Some lst -> HP.set tbl key (dep_lst @ lst)
+        | None -> HP.set tbl key dep_lst 
     );
     {
         constraints = c_table;
@@ -136,31 +145,49 @@ let calc_dep_graph lst =
     }
 ;;
 
-let calc_loc (screen : Rect.t) loc field_tbl item =
+let sel_field tbl (item, field) =
+    let c = HP.find_exn tbl item in
+    match field with
+    | DTop -> c.loc.top
+    | DBottom -> c.loc.bottom
+    | DLeft -> c.loc.left
+    | DRight -> c.loc.right
+;;
+
+let rec calc_loc (screen : Rect.t) field_tbl deps loc =
     let lookup t = HP.find_exn field_tbl t in
+    let recur = calc_loc screen field_tbl deps in
+    let app ~init ~f lst = 
+        lst
+        |> List.map ~f:recur
+        |> List.fold ~init ~f
+    in
     match loc with
-    | WTop amt -> screen.y +. amt
-    | WLeft amt -> screen.x +. amt
-    | WRight amt -> screen.x +. screen.w +. amt
-    | WBottom amt -> screen.y +. screen.h +. amt
-    | ITop (item, amt) -> lookup (item, DTop) +. amt
-    | ILeft (item, amt) -> lookup (item, DLeft) +. amt
-    | IRight (item, amt) -> lookup (item, DRight) +. amt
-    | IBottom (item, amt) -> lookup (item, DBottom) +. amt
+    | WTop -> screen.y
+    | WLeft -> screen.x
+    | WRight -> screen.x +. screen.w
+    | WBottom -> screen.y +. screen.h
+    | ITop item -> lookup (item, DTop)
+    | ILeft item -> lookup (item, DLeft)
+    | IRight item -> lookup (item, DRight)
+    | IBottom item -> lookup (item, DBottom)
     (* Hacky - dynamically recalculate the size *)
-    | PreferredW -> lookup (item, DLeft) +. item#preferredSize.Size.w
-    | PreferredH -> lookup (item, DTop) +. item#preferredSize.Size.h
+    | PreferredW item -> lookup (item, DLeft) +. item#preferredSize.Size.w
+    | PreferredH item -> lookup (item, DTop) +. item#preferredSize.Size.h
+    | Max lst -> app ~init:Float.min_value ~f:Float.max lst
+    | Min lst -> app ~init:Float.max_value ~f:Float.min lst
+    | Add lst -> app ~init:0. ~f:Float.add lst
+    | Mul lst -> app ~init:1. ~f:Float.( * ) lst
+    | Sub lst -> app ~init:(recur (List.hd_exn lst)) ~f:Float.sub (List.drop lst 1)
+    | Div lst -> app ~init:(recur (List.hd_exn lst)) ~f:Float.(/) (List.drop lst 1)
+    | Fun f -> f field_tbl
+    | FunDep (_, f) -> f field_tbl
+    | Const c -> c
 ;;
 
 let layout_single_item screen deps field_tbl (item, field as key) =
-    let c = HP.find_exn deps item in
-    let loc = match field with
-            | DTop -> c.loc.top
-            | DBottom -> c.loc.bottom
-            | DLeft -> c.loc.left
-            | DRight -> c.loc.right
-    in
-    let res = calc_loc screen loc field_tbl item in
+    let loc = sel_field deps key in
+    let res = calc_loc screen field_tbl deps loc in
     HP.set field_tbl key res;
 ;;
 
@@ -172,12 +199,10 @@ let set_rectangle tbl item =
         x2 = lookup DRight;
         y2 = lookup DBottom;
     } |> RectAabb.rect_of_aabb in
-    Stdio.printf "RECTANGLE %f %f %f %f\n" rect.x rect.y rect.w rect.h;
     item#resize rect
 ;;
 
 let layout_deps rect deps =
-    Stdio.printf "Deps! %d\n" (List.length deps.top_sort);
     let field_tbl = HP.create() in
     List.iter deps.top_sort (layout_single_item rect deps.constraints field_tbl);
     HP.iter_keys deps.constraints (set_rectangle field_tbl)

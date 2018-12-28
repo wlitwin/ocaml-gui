@@ -7,6 +7,14 @@ class loginWidget app =
     let lblPass = new Label.label app ~text:"Password" in
     let txtName = new TextBox.textBoxWidget app in
     let txtPass = new TextBox.textBoxWidget app in
+    let img = new Image.image app in
+    let img_data = ByteArray.ByteArray.of_array [|
+        0; 0; 255; 255; (**) 0; 255; 0; 255;
+        255; 0; 0; 255; (**) 0; 255; 255; 255;
+    |] in
+    let _ = img#setImage img_data 2 2; img#setScale 10.; img#setKeepAspectRatio false in
+    let _ = img#style#borderStyle#setStyle BorderStyle.Rectangle in
+    let _ = img#style#borderStyle#setSize 10. in
 object(self)
     inherit Widget.basicWidget app as super
 
@@ -19,62 +27,80 @@ object(self)
         let txtName = (txtName :> Mixins.layoutable) in
         let txtPass = (txtPass :> Mixins.layoutable) in
         let lGrid = (grid :> Mixins.layoutable) in
+        let lImg = (img :> Mixins.layoutable) in
+        let top amt = Add [WTop; Const amt] in
+        let left amt = Add [WLeft; Const amt] in
+        let right amt = Add [WRight; Const amt] in
+        let bottom amt = Add [WBottom; Const amt] in
+        let topOf item amt = Add [ITop item; Const amt] in
+        let leftOf item amt = Add [ILeft item; Const amt] in
+        let rightOf item amt = Add [IRight item; Const amt] in
+        let bottomOf item amt = Add [IBottom item; Const amt] in
         let rules = [
             { item=lName;
               loc={
-                  top=WTop 10.;
-                  left=WLeft 10.;
-                  right=WRight ~-.10.;
-                  bottom = PreferredH;
+                  top=top 10.;
+                  left=left 10.;
+                  right=right ~-.10.;
+                  bottom = PreferredH lName;
               };
             };
             { item=lPass;
               loc={
-                  top=IBottom (lName, 10.);
-                  left=WLeft 10.;
-                  right=WRight ~-.10.;
-                  bottom = PreferredH;
+                  top=bottomOf lName 10.;
+                  left=left 10.;
+                  right=right ~-.10.;
+                  bottom = PreferredH lPass;
               };
             };
             { item=lblName;
               loc={
-                  top=IBottom (lPass, 10.);
-                  left=WLeft 10.;
-                  right=IRight (lblPass, 0.);
-                  bottom = PreferredH;
+                  top=bottomOf lPass 10.;
+                  left=left 10.;
+                  right=IRight lblPass;
+                  bottom=IBottom txtName;
               };
             };
             { item=lblPass;
               loc={
-                  top=IBottom (lblName, 10.);
-                  left=WLeft 10.;
-                  right=PreferredW;
-                  bottom = PreferredH;
+                  top=ITop txtPass;
+                  left=left 10.;
+                  right=PreferredW lblPass;
+                  bottom=IBottom txtPass;
               };
             };
             { item=txtName;
               loc={
-                  top=ITop (lblName, 0.);
-                  left=IRight (lblName, 10.);
-                  right=WRight ~-.10.;
-                  bottom = PreferredH;
+                  top=ITop lblName;
+                  left=rightOf lblName 10.;
+                  right=right ~-.10.;
+                  bottom=PreferredH txtName;
               };
             };
             { item=txtPass;
               loc={
-                  top=IBottom (txtName, 10.);
-                  left=ILeft (txtName, 0.);
-                  right=WRight ~-.10.;
-                  bottom = PreferredH;
+                  top=bottomOf txtName 10.;
+                  left=ILeft txtName;
+                  right=right ~-.10.;
+                  bottom=PreferredH txtPass;
               };
             };
             {
                 item=lGrid;
                 loc={
-                    top=IBottom (txtPass, 10.);
-                    left=ILeft (lblPass, 0.);
-                    right=IRight (txtPass, 0.);
-                    bottom=WBottom ~-.10.;
+                    top=bottomOf txtPass 10.;
+                    left=ILeft lblPass;
+                    right=ILeft lImg;
+                    bottom=bottom ~-.10.;
+                };
+            };
+            {
+                item=lImg;
+                loc={
+                    top=ITop lGrid;
+                    left=Add [ILeft txtPass; Mul [Const 0.5; Sub [IRight txtPass; ILeft txtPass]]];
+                    right=right ~-.10.;
+                    bottom=Add [ITop lGrid; Mul [Const 0.5; Sub [IBottom lGrid; ITop lGrid]]];
                 };
             };
         ] in
