@@ -1,7 +1,7 @@
 class style = object(self)
-    val mutable bgColor = Color.white
-    val mutable fgColor = Color.black;
-    val mutable fontInfo = Text.default_font;
+    val mutable bgColor = Color.gray
+    val mutable fgColor = Color.black
+    val mutable fontInfo = Text.default_font
     val borderStyle = new BorderStyle.borderStyle
 
     method bgColor = bgColor

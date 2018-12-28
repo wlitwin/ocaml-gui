@@ -71,13 +71,9 @@ object(self)
         true
 
     method private expose ev =
-        (*Stdio.printf "Main window got an expose event\n%!";*)
         let cr = Cairo_gtk.create drawing_area#misc#window in
-        (*let allocation = drawing_area#misc#allocation in*)
         Util.timeit "draw" (fun _ ->
             try
-                (*let w = Float.of_int allocation.Gtk.width
-                and h = Float.of_int allocation.Gtk.height in*)
                 self#widget#postEvent (Mixins.Paint cr) |> ignore
             with e ->
                 Stdio.print_endline "==================== EXCEPTION OCCURRED ==================";

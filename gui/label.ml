@@ -10,6 +10,8 @@ object(self)
         Mixins.Propagate
 
     initializer
+        showCursor <- false;
         self#setText start_text;
         style#borderStyle#setStyle NoBorder;
+        style#setBGColor Color.gray;
 end

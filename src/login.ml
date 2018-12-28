@@ -6,13 +6,15 @@ class loginWidget app =
     let lblName = new Label.label app ~text:"Name" in
     let lblPass = new Label.label app ~text:"Password" in
     let txtName = new TextBox.textBoxWidget app in
+    let _ = txtName#setText "AWESOME!" in
     let txtPass = new TextBox.textBoxWidget app in
+    let _ = txtPass#setHideText true in
     let img = new Image.image app in
     let img_data = ByteArray.ByteArray.of_array [|
         0; 0; 255; 255; (**) 0; 255; 0; 255;
         255; 0; 0; 255; (**) 0; 255; 255; 255;
     |] in
-    let _ = img#setImage img_data 2 2; img#setScale 10.; img#setKeepAspectRatio false in
+    let _ = img#setImage img_data 2 2; img#setScale 10.; img#setKeepAspectRatio true in
     let _ = img#style#borderStyle#setStyle BorderStyle.Rectangle in
     let _ = img#style#borderStyle#setSize 10. in
 object(self)
@@ -32,8 +34,6 @@ object(self)
         let left amt = Add [WLeft; Const amt] in
         let right amt = Add [WRight; Const amt] in
         let bottom amt = Add [WBottom; Const amt] in
-        let topOf item amt = Add [ITop item; Const amt] in
-        let leftOf item amt = Add [ILeft item; Const amt] in
         let rightOf item amt = Add [IRight item; Const amt] in
         let bottomOf item amt = Add [IBottom item; Const amt] in
         let rules = [
@@ -118,8 +118,8 @@ object(self)
         item2#style#setBGColor Color.orange;
         item3#style#setBGColor Color.yellow;
         item4#style#setBGColor Color.green;
-        item5#style#setBGColor Color.blue;
-        item6#style#setBGColor Color.white;
+        item5#style#setBGColor Color.white;
+        item6#style#setBGColor Color.blue;
         item7#style#setBGColor Color.red;
         item8#style#setBGColor Color.orange;
         item9#style#setBGColor Color.yellow;

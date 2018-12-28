@@ -5,6 +5,12 @@ object(self)
     val textBox = new TextBox.textBoxWidget app
     val label = new Label.label app ~text:labelText
 
+    method! postEvent evt =
+        match evt with
+        | Mixins.Unfocused
+        | Mixins.Focused -> textBox#postEvent evt
+        | _ -> super#postEvent evt
+
     method! onKeyDown key =
         textBox#onKeyDown key
 
