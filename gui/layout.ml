@@ -1,11 +1,16 @@
 open Mixins
 
 class virtual linearLayout =
-object
+object(self)
     inherit layout
     val id = 0
     val items : layoutable DynArray.t = DynArray.make 1
     val mutable eventHandlers = []
+    val mutable snoopers = []
+    val mutable distributeEvenly = true
+
+    method clear = DynArray.clear items
+    method setDistributeEvenly b = distributeEvenly <- b
 
     method addLayoutable l = DynArray.add items (l :> layoutable)
 
@@ -13,6 +18,13 @@ object
         DynArray.filter (fun l -> l#id <> id) items
 
     method items = DynArray.to_list items
+
+    method private virtual ratioLayout : Rect.t -> unit
+    method private virtual preferredLayout : Rect.t -> unit
+
+    method layout rect =
+        if distributeEvenly then self#ratioLayout rect
+        else self#preferredLayout rect
 end
 
 type grid_data = {
@@ -26,6 +38,7 @@ object(self)
     inherit layout
     val id = 0
     val mutable eventHandlers = []
+    val mutable snoopers = []
     val mutable items = [item]
 
     method item = List.hd_exn items
@@ -53,6 +66,7 @@ object(self)
     val id = 0
     val gridSize = Size.{w=Float.of_int dimx; h=Float.of_int dimy}
     val mutable eventHandlers = []
+    val mutable snoopers = []
 
     val mutable items : grid_data list = []
 
@@ -165,7 +179,7 @@ object(self)
               Size.zero
               items
 
-    method layout rect =
+    method private ratioLayout rect =
         (* Get ratios of items *)
         let get = DynArray.get in
         let sizes = DynArray.map (fun l -> l#preferredSize.Size.w) items in
@@ -177,6 +191,15 @@ object(self)
             item#resize {rect with x = !offset; w = width} |> ignore;
             offset := !offset +. width;
         ) items
+
+    method private preferredLayout rect =
+        let xOff = ref rect.x in
+        DynArray.iter (fun item ->
+            let width = item#preferredSize.Size.w in
+            item#resize {rect with x = !xOff; w = width} |> ignore;
+            xOff := width +. !xOff;
+        ) items
+
 end
 
 class verticalLayout =
@@ -191,7 +214,7 @@ object(self)
               Size.zero
               items
 
-    method layout rect =
+    method private ratioLayout rect =
         (* Get ratios of items *)
         let get = DynArray.get in
         let sizes = DynArray.map (fun l -> l#preferredSize.Size.h) items in
@@ -202,6 +225,14 @@ object(self)
             let height = ratio *. rect.h in
             item#resize {rect with y = !offset; h = height} |> ignore;
             offset := !offset +. height;
+        ) items
+
+    method private preferredLayout rect =
+        let yOff = ref rect.y in
+        DynArray.iter (fun item ->
+            let height = item#preferredSize.Size.h in
+            item#resize {rect with y = !yOff; h = height} |> ignore;
+            yOff := height +. !yOff;
         ) items
 end
 
@@ -217,7 +248,10 @@ object(self)
             Size.zero
             items
 
-    method layout r =
+    method private ratioLayout _ = ()
+    method private preferredLayout _ = ()
+
+    method! layout r =
         let rowPos = ref Pos.{x=r.x; y=r.y} in
         let sizes = DynArray.map (fun l -> l#preferredSize) items in
         let maxy = ref 0. in

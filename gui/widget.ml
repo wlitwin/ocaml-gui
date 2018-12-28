@@ -7,6 +7,7 @@ class basicWidget app = object(self)
     val style = new Style.style
     val application = app
     val mutable eventHandlers = []
+    val mutable snoopers = []
     val mutable rect = Rect.empty
     val mutable shouldClip = true
     val mutable layout : Mixins.layout option = None
@@ -22,14 +23,14 @@ class basicWidget app = object(self)
         layout <- Some l
 
     method invalidate : unit =
-        app#redraw
+        app#redrawWidget (self :> basicWidget)
 
     method contentSize = 
         match layout with
         | Some l -> l#preferredSize
         | None -> self#size
 
-    method private fullRect =
+    method fullRect =
         style#borderStyle#outsetRectByBorder rect
 
     method clipDrawArea cr =

@@ -18,6 +18,7 @@ object(self)
     val mutable viewport : Size.t = size
     val mutable widget : Widget.basicWidget option = None
     val mutable title : string = title
+    val mutable invalidated_widgets : Widget.basicWidget list = []
     val window : GWindow.window = gtk_window
     val drawing_area : GMisc.drawing_area = drawing_area
     val special_keys : special_keys_state = {
@@ -37,12 +38,16 @@ object(self)
     method widget = Option.value_exn widget
     method setWidget w = widget <- Some w
 
+    method redrawWidget (widget : Widget.basicWidget) : unit =
+        invalidated_widgets <- widget :: invalidated_widgets;
+        self#redraw
+
     method redraw =
         GtkBase.Widget.queue_draw window#as_widget;
 
     method resize (size : Size.t) =
-        (*Stdio.printf "Resizing application %f %f\n%!" size.w size.h;*)
         self#widget#postEvent (Mixins.Resize Rect.{x=0.;y=0.;w=size.w;h=size.h}) |> ignore;
+        invalidated_widgets <- [];
         self#redraw;
         false
 
@@ -74,7 +79,12 @@ object(self)
         let cr = Cairo_gtk.create drawing_area#misc#window in
         Util.timeit "draw" (fun _ ->
             try
-                self#widget#postEvent (Mixins.Paint cr) |> ignore
+                (*match invalidated_widgets with
+                | [] -> self#widget#postEvent (Mixins.Paint cr) |> ignore
+                | lst -> List.iter lst (fun w -> w#postEvent (Mixins.Paint cr) |> ignore)
+                ;*)
+                self#widget#postEvent (Mixins.Paint cr) |> ignore;
+                invalidated_widgets <- []
             with e ->
                 Stdio.print_endline "==================== EXCEPTION OCCURRED ==================";
                 Stdio.print_endline (Exn.to_string e);

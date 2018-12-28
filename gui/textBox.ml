@@ -62,6 +62,7 @@ class textBoxWidget app = object(self)
         cursorLoc <- String.length text
 
     method private deleteWordBehindCursor =
+        (* TODO just use a while loop *)
         match String.rindex_from text (max 0 (cursorLoc - 2)) ' ' with
         | None -> 
             text <- String.sub text cursorLoc (String.length text - cursorLoc);
@@ -93,7 +94,7 @@ class textBoxWidget app = object(self)
     method private drawCursor cr =
         if showCursor then begin
             Cairo.save cr;
-            let text = Caml.String.sub self#renderText 0 cursorLoc in
+            let text = String.sub self#renderText 0 cursorLoc in
             let size = Text.measure_text ~cr style#fontInfo text in
             let fgColor = style#fgColor in
             Color.set cr fgColor;

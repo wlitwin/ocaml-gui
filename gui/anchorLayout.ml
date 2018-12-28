@@ -218,6 +218,7 @@ object(self)
 
     val id = 0
     val mutable eventHandlers = []
+    val mutable snoopers = []
     
     method items = items
     method preferredSize = Size.{w=400.; h=400.}

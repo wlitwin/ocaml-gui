@@ -7,10 +7,14 @@ type event_result = Propagate
 class virtual handlesEvent =
 object
     val virtual mutable eventHandlers : (event -> event_result) list
-    (*val mutable virtual eventFilters*)
+    val virtual mutable snoopers : (event -> unit) list
+
+    method addSnoop f =
+        snoopers <- f :: snoopers
 
     method postEvent evt =
         let module Cs = Continue_or_stop in
+        List.iter snoopers (fun f -> f evt);
         List.fold_until 
             eventHandlers
             ~init:Propagate
