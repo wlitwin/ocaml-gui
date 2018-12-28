@@ -1,4 +1,4 @@
-Crappy Ocaml GUI
+Crappy OCaml GUI
 ================
 
 Very much a WIP
