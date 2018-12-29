@@ -133,7 +133,7 @@ object(self)
         (* Create a cairo surface *)
         Cairo.save cr;
         let module CI = Cairo.Image in
-        let r = cont#rect in
+        let r = rect in
         let w, h = Util.iceil r.w, Util.iceil r.h in
         let img = CI.create CI.ARGB32 w h in
         let cri = Cairo.create img in
@@ -148,9 +148,4 @@ object(self)
         Cairo.restore cr;
         vertScroller#onDraw cr;
         horzScroller#onDraw cr;
-        (*
-        Cairo.set_source_rgba cr 0.25 0.1 0.0 1.0;
-        Cairo.rectangle cr rect.x rect.y rect.w rect.h;
-        Cairo.fill cr;
-        *)
 end
