@@ -77,6 +77,8 @@ class textBoxWidget app = object(self)
         let open Application in
         (match key with
         | Keys.Backspace -> self#deleteAtCursor
+        | Keys.LArrow -> self#moveCursorBack
+        | Keys.RArrow -> self#moveCursorForward
         | Keys.H when app#specialKeys.ctrlDown -> self#moveCursorBack
         | Keys.L when app#specialKeys.ctrlDown -> self#moveCursorForward
         | Keys.A when app#specialKeys.ctrlDown -> self#moveCursorToBeginning

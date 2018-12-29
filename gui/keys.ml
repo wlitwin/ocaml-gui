@@ -11,6 +11,7 @@ type key =
     | LCaret | RCaret | Question | FSlash | BSlash
     | Pipe | Period | BackTick | Tilde | DoubleQuote
     | SingleQuote | Esc | LAlt | Enter | Tab | Space
+    | LArrow | RArrow | UArrow | DArrow
 
 let is_modifier = function
     | LAlt
@@ -89,6 +90,10 @@ let key_code = function
     | LSuper  -> 0xffeb
     | Tab -> 0xff09
     | Space -> 32
+    | LArrow -> 0xff51
+    | UArrow -> 0xff52
+    | RArrow -> 0xff53
+    | DArrow -> 0xff54
 
 exception Unknown_key_int of int
 let of_code = function
@@ -169,6 +174,10 @@ let of_code = function
     | 0xffe9 -> LAlt
     | 0xff0d -> Enter
     | 0xff09 -> Tab
+    | 0xff51 -> LArrow
+    | 0xff52 -> UArrow
+    | 0xff53 -> RArrow
+    | 0xff54 -> DArrow
     | code -> raise (Unknown_key_int code)
 
 exception No_string_for_key of key
@@ -246,4 +255,5 @@ let to_string = function
     | Esc | LAlt | Enter
     | LShift | RShift 
     | LControl | LSuper 
+    | LArrow | UArrow | RArrow | DArrow
     | Backspace as key -> raise (No_string_for_key key)
