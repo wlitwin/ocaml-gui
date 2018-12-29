@@ -75,7 +75,7 @@ object(self)
                 | Keys.H -> horzScroller#ratio, horzScroller#decrPos
                 | _ -> 1.0, fun _ -> ()
             in
-            fn (ratio *. 2.0);
+            fn ratio;
             self#invalidate
         end;
         Mixins.Propagate
