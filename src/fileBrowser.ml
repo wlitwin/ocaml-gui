@@ -34,13 +34,8 @@ object(self)
             | Mixins.KeyDown Keys.Enter -> self#updatePath
             | _ -> ()
         );
-        let open AnchorLayout in
-        let top amt = Add [WTop; Const amt] in
-        let left amt = Add [WLeft; Const amt] in
-        let right amt = Add [WRight; Const ~-.amt] in
-        let bottom amt = Add [WBottom; Const ~-.amt] in
-        let rightOf i amt = Add [IRight i; Const amt] in
-        let bottomOf i amt = Add [IBottom i; Const amt] in
+        let open ConstraintLayout in
+        let open ConstraintLayout.Constraint in
         let centerTop toCenter ref = FunDep ([(ref, DTop); (ref, DBottom)], fun fields ->
             let lookup f = Hashtbl.Poly.find_exn fields f in
             let top = lookup (ref, DTop)
@@ -52,11 +47,11 @@ object(self)
         let tPath = cl txtPath in
         let lScroll = cl scroll in
         let rules = [
-            {item=lPath; loc={top=centerTop lPath tPath; left=left 10.; bottom=PreferredH lPath; right=PreferredW lPath}};
-            {item=tPath; loc={top=top 10.; left=rightOf lPath 10.; right=right 10.; bottom=PreferredH tPath}};
-            {item=lScroll; loc={top=bottomOf tPath 10.; left=left 10.; right=right 10.; bottom=bottom 10.}};
+            {item=lPath; loc={top=centerTop lPath tPath; left=wLeft 10.; bottom=PreferredH lPath; right=PreferredW lPath}};
+            {item=tPath; loc={top=wTop 10.; left=rightOf lPath 10.; right=wRight ~-.10.; bottom=PreferredH tPath}};
+            {item=lScroll; loc={top=bottomOf tPath 10.; left=wLeft 10.; right=wRight ~-.10.; bottom=wBottom ~-.10.}};
         ] in
-        let layout = new AnchorLayout.anchorLayout rules in
+        let layout = new constraintLayout rules in
         self#setLayout (layout :> Mixins.layout)
 
     inherit Mixins.focusManager app [(txtPath :> Mixins.handlesEvent);

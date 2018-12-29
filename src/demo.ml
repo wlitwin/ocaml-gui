@@ -100,8 +100,9 @@ object(self)
 
 end
 
+(*
 class main2 app =
-    let coerce = List.map ~f:(fun item -> (item :> Widget.basicWidget)) in
+    let coerce = List.map ~f:(fun item -> (item :> Mixins.layoutable)) in
     let list_labels = [
         "Item 1"; "Item 2"; "Item 3"; "Item 4";
     ] |> List.map ~f:(mk_lbl app) |> coerce in
@@ -122,3 +123,4 @@ object(self)
         vbox#addLayoutable (lbox :> Mixins.layoutable);
         self#setLayout (vbox :> Mixins.layout)
 end
+*)

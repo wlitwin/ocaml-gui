@@ -46,7 +46,9 @@ object(self)
         GtkBase.Widget.queue_draw window#as_widget;
 
     method resize (size : Size.t) =
-        self#widget#postEvent (Mixins.Resize Rect.{x=0.;y=0.;w=size.w;h=size.h}) |> ignore;
+        Util.timeit "resize" (fun _ ->
+            self#widget#postEvent (Mixins.Resize Rect.{x=0.;y=0.;w=size.w;h=size.h}) |> ignore;
+        );
         invalidated_widgets <- [];
         self#redraw;
         false

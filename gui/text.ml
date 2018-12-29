@@ -33,7 +33,8 @@ let draw_text cr rect style text =
     Cairo.set_source_rgba cr color.r color.g color.b color.a;
     let offset = Float.(max 0. (hint.w -. rect.w)) in
     let fe = Cairo.font_extents cr in
-    Cairo.move_to cr (rect.x -. offset) (rect.y +. rect.h -. fe.Cairo.descent);
+    (*Cairo.move_to cr (rect.x -. offset) (rect.y +. rect.h -. fe.Cairo.descent);*)
+    Cairo.move_to cr (rect.x -. offset) (rect.y +. fe.Cairo.ascent);
     Cairo.show_text cr text;
     Cairo.restore cr;
 ;;
