@@ -67,17 +67,23 @@ object(self)
         cont <- c
 
     method! onKeyDown k =
-        begin if app#specialKeys.Application.ctrlDown then
-            let ratio, fn = match k with
-                | Keys.J -> vertScroller#ratio, vertScroller#incrPos
-                | Keys.K -> vertScroller#ratio, vertScroller#decrPos
-                | Keys.L -> horzScroller#ratio, horzScroller#incrPos
-                | Keys.H -> horzScroller#ratio, horzScroller#decrPos
-                | _ -> 1.0, fun _ -> ()
-            in
-            fn ratio;
-            self#invalidate
-        end;
+        let ratio, fn = 
+            let open Application in
+            match k with
+            | Keys.A when app#specialKeys.ctrlDown -> 0.0, vertScroller#setPosition
+            | Keys.E when app#specialKeys.ctrlDown -> 1.0, vertScroller#setPosition
+            | Keys.J when app#specialKeys.ctrlDown -> vertScroller#ratio*.0.5, vertScroller#incrPos
+            | Keys.K when app#specialKeys.ctrlDown -> vertScroller#ratio*.0.5, vertScroller#decrPos
+            | Keys.L when app#specialKeys.ctrlDown -> horzScroller#ratio*.0.5, horzScroller#incrPos
+            | Keys.H when app#specialKeys.ctrlDown -> horzScroller#ratio*.0.5, horzScroller#decrPos
+            | Keys.J -> vertScroller#ratio, vertScroller#incrPos
+            | Keys.K -> vertScroller#ratio, vertScroller#decrPos
+            | Keys.L -> horzScroller#ratio, horzScroller#incrPos
+            | Keys.H -> horzScroller#ratio, horzScroller#decrPos
+            | _ -> 1.0, fun _ -> ()
+        in
+        fn ratio;
+        self#invalidate;
         Mixins.Propagate
 
     method! onResize r =
