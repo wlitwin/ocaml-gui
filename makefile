@@ -4,9 +4,17 @@ OCAMLBUILD = ocamlbuild -use-ocamlfind
 
 PKGS=cairo2,cairo2.lablgtk2,lablgtk2,lablgtk2-extras,base,extlib,core
 #,ocamlgraph,ocamlgraph.dgraph
+JS_PKGS=js_of_ocaml,js_of_ocaml-ocamlbuild,js_of_ocaml-ppx
 
 dbg:
 	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread -I src -I gui src/main.d.byte
+
+js:
+	$(OCAMLBUILD) -plugin-tag "package(js_of_ocaml.ocamlbuild)" -tag thread -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -pkg $(JS_PKGS) -I src -I gui -I js_gui js_gui/gui.js
+
+js2:
+	ocamlfind ocamlc -package js_of_ocaml -package js_of_ocaml-ppx -linkpkg -o js_gui/gui.byte js_gui/gui.ml
+	js_of_ocaml js_gui/gui.byte
 
 opt2:
 	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread -I src -I gui src/main.native
