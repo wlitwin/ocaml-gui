@@ -5,7 +5,7 @@ type special_keys_state = {
     mutable superDown : bool;
 }
 
-class application ?(title="Window") size = 
+class application window ?(title="Window") size = 
 object(self)
     val mutable viewport : Size.t = size
     val mutable widget : Widget.basicWidget option = None
@@ -16,7 +16,6 @@ object(self)
         altDown=false;
         superDown=false;
     }
-    val window : Platform.Windowing.context = Platform.Windowing.create()
 
     method specialKeys = special_keys
 
@@ -79,6 +78,5 @@ object(self)
         ~resize:(fun sz -> self#resize sz)
         ~keyPress:(fun key -> self#keyDown key)
         ~keyRelease:(fun key -> self#keyUp key);
-        Platform.Windowing.run window
 end
 

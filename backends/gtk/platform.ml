@@ -166,6 +166,8 @@ module Windowing : PlatformSig.WindowingSig = struct
     let request_redraw context =
         GtkBase.Widget.queue_draw context.window#as_widget
 
-    let run window =
+    let run setup_func =
+        let context = create() in
+        setup_func context;
         GMain.main()
 end

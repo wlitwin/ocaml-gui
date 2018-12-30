@@ -6,13 +6,13 @@ PKGS=cairo2,cairo2.lablgtk2,lablgtk2,lablgtk2-extras,base,extlib,core
 #,ocamlgraph,ocamlgraph.dgraph
 JS_PKGS=base,js_of_ocaml,js_of_ocaml-ocamlbuild,js_of_ocaml-ppx
 
-COMMON_INCLUDES=-I gui/ -I backends/sigs/
+COMMON_INCLUDES=-I apps/ -I gui/ -I backends/sigs/
 
 dbg:
 	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread $(COMMON_INCLUDES) -I backends/gtk -I src src/main.d.byte
 
 js:
-	$(OCAMLBUILD) -plugin-tag "package(js_of_ocaml.ocamlbuild)" -cflags -annot,-bin-annot,'-open Base' -pkg $(JS_PKGS) $(COMMON_INCLUDES) -tag debug -I backends/canvas/ -I js_gui js_gui/main.js
+	$(OCAMLBUILD) -plugin-tag "package(js_of_ocaml.ocamlbuild)" -cflags -annot,-bin-annot,'-open Base' -pkg $(JS_PKGS) $(COMMON_INCLUDES) -tag debug -I backends/canvas/ src/main.js
 
 JS_TARGET=main
 

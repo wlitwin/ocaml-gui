@@ -64,5 +64,5 @@ module type WindowingSig = sig
 
     val request_redraw : context -> unit
 
-    val run : context -> unit
+    val run : (context -> unit) -> unit
 end

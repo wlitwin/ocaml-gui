@@ -175,37 +175,42 @@ module Windowing : PlatformSig.WindowingSig = struct
 
     let body () = Dom_html.window##.document##.body
 
-    let run context =
-        let window = Dom_html.window in 
-        window##.onresize := Dom_html.handler (fun evt -> 
-            (* Resize the canvas *)
-            let doc = Dom_html.window##.document in
-            let body = doc##.body in
+    let run setup_func =
+        Dom_html.window##.onload := Dom_html.handler (fun _ ->
+            let context = create() in
+            setup_func context;
+            let window = Dom_html.window in 
+            window##.onresize := Dom_html.handler (fun evt -> 
+                (* Resize the canvas *)
+                let doc = Dom_html.window##.document in
+                let body = doc##.body in
+                let w, h = body##.offsetWidth, body##.offsetHeight in
+                Caml.print_endline Printf.(sprintf "Window resized %d %d\n" w h);
+                context.canvas.canvas_elem##.width := w;
+                context.canvas.canvas_elem##.height := h;
+                context.resize Size.{w=Float.of_int w; h=Float.of_int h};
+                wrapped_draw context;
+                Js._true
+            );
+            window##.onkeydown := Dom_html.handler (fun evt ->
+                Caml.print_endline Printf.(sprintf "Key code is %d\n" evt##.keyCode);
+                let code : Js.js_string Js.t Js.optdef = evt##.code in
+                context.keyPress (KeyConverter.convert_code_to_key code);
+                Dom.preventDefault evt;
+                Dom_html.stopPropagation evt;
+                Js._false;
+            );
+            window##.onkeyup := Dom_html.handler (fun evt ->
+                context.keyRelease (KeyConverter.convert_code_to_key evt##.code);
+                Dom.preventDefault evt;
+                Dom_html.stopPropagation evt;
+                Js._false;
+            );
+            let body = body() in
             let w, h = body##.offsetWidth, body##.offsetHeight in
-            Caml.print_endline Printf.(sprintf "Window resized %d %d\n" w h);
-            context.canvas.canvas_elem##.width := w;
-            context.canvas.canvas_elem##.height := h;
             context.resize Size.{w=Float.of_int w; h=Float.of_int h};
             wrapped_draw context;
-            Js._true
-        );
-        window##.onkeydown := Dom_html.handler (fun evt ->
-            Caml.print_endline Printf.(sprintf "Key code is %d\n" evt##.keyCode);
-            let code : Js.js_string Js.t Js.optdef = evt##.code in
-            context.keyPress (KeyConverter.convert_code_to_key code);
-            Dom.preventDefault evt;
-            Dom_html.stopPropagation evt;
-            Js._false;
-        );
-        window##.onkeyup := Dom_html.handler (fun evt ->
-            context.keyRelease (KeyConverter.convert_code_to_key evt##.code);
-            Dom.preventDefault evt;
-            Dom_html.stopPropagation evt;
-            Js._false;
-        );
-        let body = body() in
-        let w, h = body##.offsetWidth, body##.offsetHeight in
-        context.resize Size.{w=Float.of_int w; h=Float.of_int h};
-        wrapped_draw context
+            Js._false
+        )
     ;;
 end

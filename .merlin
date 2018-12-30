@@ -1,12 +1,14 @@
 S src/
 S gui/
-S js_gui/
+S apps/
 S backends/
 S backends/gtk/
+S backends/canvas/
 S backends/sigs/
 
 B _build/backends/sigs/
 B _build/backends/gtk/
+B _build/backends/canvas/
 B _build/src/
 B _build/gui/
 
