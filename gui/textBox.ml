@@ -25,14 +25,15 @@ class textBoxWidget app = object(self)
     method text = text
 
     method contentSize =
-        self#measureText Util.dummy_ctx 
+        self#measureText app#graphicsContext
         (if String.(=) text "" then "default_size" else text)
 
     method measureText cr text =
-        Text.measure_text cr style#fontInfo text
+        let metrics = Graphics.measure_text cr style#fontInfo text in
+        Size.{w=metrics.width; h=metrics.ascent +. metrics.descent}
 
     method drawText cr =
-        Text.draw_text cr rect style self#renderText
+        Graphics.draw_text cr style#fontInfo rect self#renderText
 
     method private splitOnCursor =
         let before = String.sub text 0 cursorLoc
@@ -99,12 +100,12 @@ class textBoxWidget app = object(self)
         if showCursor then begin
             Graphics.save cr;
             let text = String.sub self#renderText 0 cursorLoc in
-            let size = Text.measure_text cr style#fontInfo text in
+            let size = Graphics.measure_text cr style#fontInfo text in
             let fgColor = style#fgColor in
             Graphics.set_color cr fgColor;
             Graphics.set_width cr 1.;
-            Graphics.move_to cr (rect.x +. size.w) (rect.y +. rect.h);
-            Graphics.line_to cr (rect.x +. size.w) rect.y;
+            Graphics.move_to cr (rect.x +. size.width) (rect.y +. rect.h);
+            Graphics.line_to cr (rect.x +. size.width) rect.y;
             Graphics.stroke cr;
             Graphics.restore cr;
         end

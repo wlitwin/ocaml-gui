@@ -1,0 +1,41 @@
+let convert_code_to_key code = 
+    let code = Js.Optdef.get code (fun _ -> Js.string "KeyA") |> Js.to_string in
+    match code with
+    | "KeyA" -> Keys.A
+    | "KeyB" -> Keys.B
+    | "KeyC" -> Keys.C
+    | "KeyD" -> Keys.D
+    | "KeyE" -> Keys.E
+    | "KeyF" -> Keys.F
+    | "KeyG" -> Keys.G
+    | "KeyH" -> Keys.H
+    | "KeyI" -> Keys.I
+    | "KeyJ" -> Keys.J
+    | "KeyK" -> Keys.K
+    | "KeyL" -> Keys.L
+    | "KeyM" -> Keys.M
+    | "KeyN" -> Keys.N
+    | "KeyO" -> Keys.O
+    | "KeyP" -> Keys.P
+    | "KeyQ" -> Keys.Q
+    | "KeyR" -> Keys.R
+    | "KeyS" -> Keys.S
+    | "KeyT" -> Keys.T
+    | "KeyU" -> Keys.U
+    | "KeyV" -> Keys.V
+    | "KeyW" -> Keys.W
+    | "KeyX" -> Keys.X
+    | "KeyY" -> Keys.Y
+    | "KeyZ" -> Keys.Z
+    | "ArrowLeft" -> Keys.LArrow
+    | "ArrowRight" -> Keys.RArrow
+    | "ArrowUp" -> Keys.UArrow
+    | "ArrowDown" -> Keys.DArrow
+    | "Space" -> Keys.Space
+    | "ControlLeft" -> Keys.LControl
+    | "OSLeft" -> Keys.LSuper
+    | "AltLeft" -> Keys.LAlt
+    | "ShiftLeft" -> Keys.LShift
+    | "Backspace" -> Keys.Backspace
+    | _ -> Keys.A
+;;

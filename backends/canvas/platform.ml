@@ -23,6 +23,7 @@ module CanvasGraphics = struct
        canvas##.height := body##.offsetHeight;
        Dom.appendChild body canvas;
        let c = canvas##getContext Html._2d_ in
+       c##.strokeStyle := Js.string "rgb(0, 0, 0, 0)";
        c##.lineWidth := 0.;
        Js.export "cvar" c;
        { canvas=c; canvas_elem=canvas; }
@@ -36,7 +37,60 @@ module CanvasGraphics = struct
     let set_color context (color : Color.t) =
         let color = Color.scale_by color 255.0 in
         let style = Printf.sprintf "rgb(%f, %f, %f, %f)" color.r color.g color.b color.a in
-        context.canvas##.fillStyle := (Js.string style)
+        context.canvas##.fillStyle := (Js.string style);
+        context.canvas##.strokeStyle := (Js.string style);
+    ;;
+
+    let setup_font_info context font_info =
+        let open Font in
+        let style = match font_info.weight with
+                    | Normal -> "400"
+                    | Bold -> "700"
+        in
+        let size = Printf.sprintf "%dpx" Float.(to_int font_info.size) in
+        let font_string = Printf.sprintf "%s %s %s" style size "serif" in
+        Caml.print_endline font_string;
+        context.canvas##.font := Js.string font_string
+    ;;
+
+    let measure_text context font_info text =
+        save context;
+        setup_font_info context font_info;
+        let metrics = context.canvas##measureText (Js.string text) in
+        restore context;
+        let width = (Js.Unsafe.coerce metrics)##.width in
+        let x_bearing = width in
+        let x_advance = width in
+        (* HTML+Javascript suck balls, apparently there's no text/font metrics
+         * beyond the width... *)
+        let ascent = font_info.size*.0.9 in
+        let descent = font_info.size*.0.1 in
+        Font.{
+            width;
+            x_bearing;
+            x_advance;
+            ascent;
+            descent;
+        }
+    ;;
+
+    let draw_text context font_info (rect : Rect.t) text =
+        save context;
+        setup_font_info context font_info;
+        let metrics = measure_text context font_info text in
+        (*Caml.print_endline Printf.(sprintf "Metrics width %f bearing %f advance %f ascent %f descent %f\nRECT %f %f\n"
+            metrics.width
+            metrics.x_bearing
+            metrics.x_advance
+            metrics.ascent
+            metrics.descent
+            rect.x
+            rect.y);*)
+        context.canvas##.fillStyle := Js.string "black";
+        let offset = Float.(max 0. (metrics.width -. rect.w)) in
+        context.canvas##fillText (Js.string text) (rect.x -. offset) (rect.y +. metrics.ascent);
+        restore context;
+    ;;
 
     let set_width context width =
         context.canvas##.lineWidth := width
@@ -53,24 +107,20 @@ module CanvasGraphics = struct
     let fill context =
         context.canvas##fill
 
+    let rectangle context (rect : Rect.t) =
+        context.canvas##beginPath;
+        context.canvas##rect rect.x rect.y rect.w rect.h
+
     let clip_rect context (rect : Rect.t) =
-        context.canvas##rect rect.x rect.y rect.w rect.h;
+        (*context.canvas##rect rect.x rect.y rect.w rect.h;*)
+        rectangle context rect;
         context.canvas##stroke;
         context.canvas##clip
 
     let clip_reset context =
-        (* TODO !? *)
-        ()
-
-    let measure_text context text =
-        ()
-
-    let draw_text context text =
-        ()
-
-    let rectangle context (rect : Rect.t) =
-        context.canvas##beginPath;
-        context.canvas##rect rect.x rect.y rect.w rect.h
+        let w = Float.of_int context.canvas_elem##.width in
+        let h = Float.of_int context.canvas_elem##.height in
+        clip_rect context Rect.{x=0.; y=0.; w; h};
 end
 
 module Windowing : PlatformSig.WindowingSig = struct
@@ -111,7 +161,10 @@ module Windowing : PlatformSig.WindowingSig = struct
         context.resize <- resize;
         context.keyPress <- keyPress;
         context.keyRelease <- keyRelease;
+        Dom_html.window##.document##.title := (Js.string title)
     ;;
+
+    let graphics_context context = context.canvas
 
     let set_title context (new_title : string) : unit =
         Dom_html.window##.document##.title := (Js.string new_title)
@@ -135,6 +188,20 @@ module Windowing : PlatformSig.WindowingSig = struct
             context.resize Size.{w=Float.of_int w; h=Float.of_int h};
             wrapped_draw context;
             Js._true
+        );
+        window##.onkeydown := Dom_html.handler (fun evt ->
+            Caml.print_endline Printf.(sprintf "Key code is %d\n" evt##.keyCode);
+            let code : Js.js_string Js.t Js.optdef = evt##.code in
+            context.keyPress (KeyConverter.convert_code_to_key code);
+            Dom.preventDefault evt;
+            Dom_html.stopPropagation evt;
+            Js._false;
+        );
+        window##.onkeyup := Dom_html.handler (fun evt ->
+            context.keyRelease (KeyConverter.convert_code_to_key evt##.code);
+            Dom.preventDefault evt;
+            Dom_html.stopPropagation evt;
+            Js._false;
         );
         let body = body() in
         let w, h = body##.offsetWidth, body##.offsetHeight in

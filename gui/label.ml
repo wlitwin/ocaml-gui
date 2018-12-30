@@ -1,5 +1,4 @@
 open Widget
-open Text
 
 class label ?(text="") app = 
     let start_text = text in

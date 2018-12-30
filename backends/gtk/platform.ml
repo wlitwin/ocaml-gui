@@ -14,8 +14,46 @@ module CairoGraphics = struct
     let stroke = Cairo.stroke
     let fill = Cairo.fill
 
-    let measure_text cr txt = ()
-    let draw_text cr txt = ()
+    let font_weight_to_cairo = function 
+        | Font.Normal -> Cairo.Normal
+        | Font.Bold -> Cairo.Bold
+    ;;
+
+    let measure_text cr (font_info : Font.t) text : Font.metrics =
+        let weight = font_weight_to_cairo font_info.weight in
+        save cr;
+        Cairo.set_font_size cr font_info.size;
+        Cairo.select_font_face cr font_info.font ~weight;
+        let fe = Cairo.font_extents cr in
+        let te = Cairo.text_extents cr text in
+        restore cr;
+        (*Size.{w=(*te.width +. te.x_bearing +.*) te.x_advance; h=fe.ascent +. fe.descent}*)
+        Font.{
+            width = te.x_advance;
+            x_advance = te.x_advance;
+            x_bearing = te.x_bearing;
+            ascent = fe.ascent;
+            descent = fe.descent;
+        }
+    ;;
+
+    let draw_text cr (font_info : Font.t) (rect : Rect.t) text =
+        let open Rect in
+        let open Color in
+        save cr;
+        Cairo.select_font_face cr font_info.font ~weight:(font_weight_to_cairo font_info.weight);
+        Cairo.set_font_size cr font_info.size;
+        let hint = measure_text cr font_info text in
+        (*let color = style#fgColor in*)
+        (*Cairo.set_source_rgba cr color.r color.g color.b color.a;*)
+        set_color cr Color.black;
+        let offset = Float.(max 0. (hint.width -. rect.w)) in
+        let fe = Cairo.font_extents cr in
+        (*Cairo.move_to cr (rect.x -. offset) (rect.y +. rect.h -. fe.Cairo.descent);*)
+        Cairo.move_to cr (rect.x -. offset) (rect.y +. fe.Cairo.ascent);
+        Cairo.show_text cr text;
+        restore cr;
+    ;;
 
     let rectangle cr rect =
         let open Rect in
@@ -119,6 +157,8 @@ module Windowing : PlatformSig.WindowingSig = struct
         );
         gtk_window#show()
     ;;
+
+    let graphics_context context = Cairo_gtk.create context.window#misc#window
 
     let set_title context title =
         context.window#set_title title

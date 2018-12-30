@@ -25,6 +25,9 @@ object(self)
         title <- t;
         Platform.Windowing.set_title window t
 
+    method graphicsContext =
+        Platform.Windowing.graphics_context window
+
     method widget = Option.value_exn widget
     method setWidget w = widget <- Some w
 

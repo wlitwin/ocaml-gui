@@ -1,3 +1,24 @@
+module type FontSig = sig
+    type weight = Normal
+                | Bold
+
+    type metrics = {
+        width : float;
+        x_bearing : float;
+        x_advance : float;
+        ascent : float;
+        descent : float;
+    }
+
+    type t = {
+        mutable size : float;
+        mutable font : string;
+        mutable weight : weight;
+    }
+
+    val default_font : t
+end
+
 module type GraphicsSig = sig
     type context
 
@@ -11,11 +32,11 @@ module type GraphicsSig = sig
     val stroke : context -> unit
     val fill : context -> unit
 
+    val measure_text : context -> Font.t -> string -> Font.metrics
+    val draw_text : context -> Font.t -> Rect.t -> string -> unit
+
     val clip_rect : context -> Rect.t -> unit
     val clip_reset : context -> unit
-
-    val measure_text : context -> string -> unit
-    val draw_text : context -> string -> unit
 
     val rectangle : context -> Rect.t -> unit
 end
@@ -36,6 +57,8 @@ module type WindowingSig = sig
         -> keyPress:(Keys.key -> unit)
         -> keyRelease:(Keys.key -> unit)
         -> unit
+
+    val graphics_context : context -> Graphics.context
 
     val set_title : context -> string -> unit
 

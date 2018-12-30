@@ -1,4 +1,5 @@
 class simple app =
+    let label1 = new TextBox.textBoxWidget app in
 object(self)
     inherit Widget.basicWidget app as super
 
@@ -13,19 +14,22 @@ object(self)
         let lWidget2 = cl widget2 in
         let lWidget3 = cl widget3 in
         let lWidget4 = cl widget4 in
+        let lbl = cl label1 in
         let open ConstraintLayout in
         let open ConstraintLayout.Constraint in
         let rules = [
+            {item=lbl;
+             loc={top=wTop 10.; left=wLeft 10.; right=wRight ~-.10.; bottom=PreferredH lbl}};
             {item=lWidget1;
              loc={
-                 top=wTop 10.;
+                 top=bottomOf lbl 10.;
                  left=wLeft 10.;
                  right=leftOf lWidget2 ~-.10.;
                  bottom=Mul [WBottom; Const 0.3];
             }};
             {item=lWidget2;
              loc={
-                 top=wTop 10.;
+                 top=bottomOf lbl 10.;
                  left=Mul [WRight; Const 0.3];
                  right=wRight ~-.10.;
                  bottom=Mul [WBottom; Const 0.6];
@@ -51,4 +55,6 @@ object(self)
         widget3#style#setBGColor Color.green;
         widget4#style#setBGColor Color.blue;
         self#setLayout (layout :> Mixins.layout)
+
+    inherit Mixins.focusManager app [(label1 :> Mixins.handlesEvent)]
 end
