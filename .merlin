@@ -1,6 +1,12 @@
 S src/
 S gui/
+S js_gui/
+S backends/
+S backends/gtk/
+S backends/sigs/
 
+B _build/backends/sigs/
+B _build/backends/gtk/
 B _build/src/
 B _build/gui/
 

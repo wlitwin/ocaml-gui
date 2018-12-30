@@ -1,4 +1,4 @@
-type color = {
+type t = {
     r : float;
     g : float;
     b : float;
@@ -15,6 +15,9 @@ let orange = {r=1.; g=0.5; b=0.; a=1.}
 let yellow = {r=1.; g=1.; b=0.; a=1.}
 let none  = {r=0.; g=0.; b=0.; a=0.}
 
-let set cr color =
-    Cairo.set_source_rgba cr color.r color.g color.b color.a
-;;
+let scale_by color amt = {
+    r = color.r *. amt;
+    g = color.g *. amt;
+    b = color.b *. amt;
+    a = color.a *. amt;
+}

@@ -4,17 +4,30 @@ OCAMLBUILD = ocamlbuild -use-ocamlfind
 
 PKGS=cairo2,cairo2.lablgtk2,lablgtk2,lablgtk2-extras,base,extlib,core
 #,ocamlgraph,ocamlgraph.dgraph
-JS_PKGS=js_of_ocaml,js_of_ocaml-ocamlbuild,js_of_ocaml-ppx
+JS_PKGS=base,js_of_ocaml,js_of_ocaml-ocamlbuild,js_of_ocaml-ppx
+
+COMMON_INCLUDES=-I gui/ -I backends/sigs/
 
 dbg:
-	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread -I src -I gui src/main.d.byte
+	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread $(COMMON_INCLUDES) -I backends/gtk -I src src/main.d.byte
 
 js:
-	$(OCAMLBUILD) -plugin-tag "package(js_of_ocaml.ocamlbuild)" -tag thread -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -pkg $(JS_PKGS) -I src -I gui -I js_gui js_gui/gui.js
+	$(OCAMLBUILD) -plugin-tag "package(js_of_ocaml.ocamlbuild)" -cflags -annot,-bin-annot,'-open Base' -pkg $(JS_PKGS) $(COMMON_INCLUDES) -tag debug -I backends/canvas/ -I js_gui js_gui/main.js
+
+JS_TARGET=main
 
 js2:
-	ocamlfind ocamlc -package js_of_ocaml -package js_of_ocaml-ppx -linkpkg -o js_gui/gui.byte js_gui/gui.ml
-	js_of_ocaml js_gui/gui.byte
+	ocamlfind ocamlc -open Base -annot -bin-annot -package base -package js_of_ocaml -package js_of_ocaml-ppx -thread -ppx -linkpkg -o js_gui/$(JS_TARGET).byte js_gui/$(JS_TARGET).ml
+	js_of_ocaml js_gui/$(JS_TARGET).byte
+	mv js_gui/*.annot _build/js_gui/.
+	mv js_gui/*.binannot _build/js_gui/.
+	mv js_gui/*.cmo _build/js_gui/.
+	mv js_gui/*.cmi _build/js_gui/.
+	mv js_gui/*.byte _build/js_gui/.
+	mv js_gui/*.js _build/js_gui/.
+
+run_js:
+	firefox js_gui/index.html
 
 opt2:
 	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread -I src -I gui src/main.native

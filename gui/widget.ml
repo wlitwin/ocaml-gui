@@ -1,4 +1,5 @@
 open Mixins
+module Graphics = Platform.Windowing.Graphics
 
 type 'a layout = 'a constraint 'a = Mixins.layout
 
@@ -23,7 +24,7 @@ class basicWidget app = object(self)
         layout <- Some l
 
     method invalidate : unit =
-        app#redrawWidget (self :> basicWidget)
+        app#redrawWidget (self :> Mixins.handlesEvent)
 
     method contentSize = 
         match layout with
@@ -34,7 +35,7 @@ class basicWidget app = object(self)
         style#borderStyle#outsetRectByBorder rect
 
     method clipDrawArea cr =
-        if shouldClip then Paint.clip cr self#fullRect
+        if shouldClip then Graphics.clip_rect cr self#fullRect
 
     method private sendEventToLayout event =
         Option.iter layout (fun l -> l#postEvent event |> ignore)
@@ -53,14 +54,14 @@ class basicWidget app = object(self)
         style#borderStyle#outsetSizeByBorder self#contentSize
 
     method onDraw cr =
-        Cairo.save cr;
+        Graphics.save cr;
         self#clipDrawArea cr;
         let fullRect = self#fullRect in
         style#fillBgColor cr fullRect;
         style#borderStyle#drawBorder cr fullRect;
-        Cairo.move_to cr rect.x rect.y;
+        Graphics.move_to cr rect.x rect.y;
         self#paint cr;
-        Cairo.restore cr;
+        Graphics.restore cr;
 
     initializer
         rect <- Rect.{x=0.; y=0.; w=10.; h=10.}

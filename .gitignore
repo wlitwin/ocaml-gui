@@ -3,3 +3,9 @@ _build/
 *.byte
 *.d.native
 *.native
+*.swp
+*.cmi
+*.cmo
+*.cmx
+*.annot
+*.binannot

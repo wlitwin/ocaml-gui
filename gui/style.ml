@@ -1,3 +1,5 @@
+module Graphics = Platform.Windowing.Graphics
+
 class style = object(self)
     val mutable bgColor = Color.gray
     val mutable fgColor = Color.black
@@ -15,12 +17,12 @@ class style = object(self)
     method borderStyle = borderStyle
 
     method fillBgColor cr (rect : Rect.t) =
-        Cairo.set_source_rgba cr bgColor.r bgColor.g bgColor.b bgColor.a;
+        Graphics.set_color cr bgColor;
         begin match borderStyle#style with
         | NoBorder
-        | Rectangle -> Cairo.rectangle cr rect.x rect.y rect.w rect.h
-        | Rounded radius -> Paint.rounded_rect cr rect radius
+        | Rectangle -> Graphics.rectangle cr rect
+        | Rounded radius -> (*Paint.rounded_rect cr rect radius*) ()
         end;
-        Cairo.fill cr
+        Graphics.fill cr
 end
 

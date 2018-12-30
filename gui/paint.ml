@@ -1,7 +1,10 @@
+module Graphics = Platform.Windowing.Graphics
+
 let degrees = Float.pi /. 180.0
 
 let rounded_rect cr (rect : Rect.t) radius = 
-    let open Cairo in
+    (*
+    let open Graphics in
     let open Float in
     let r = rect in
     Path.sub cr;
@@ -10,9 +13,6 @@ let rounded_rect cr (rect : Rect.t) radius =
     arc cr (r.x + radius) (r.y + r.h -radius) radius (90. *. degrees) (180. *. degrees);
     arc cr (r.x + radius) (r.y + radius) radius (180. *. degrees) (270. *. degrees);
     Path.close cr;
-;;
-
-let clip cr (rect : Rect.t) =
-    Cairo.rectangle cr rect.x rect.y rect.w rect.h;
-    Cairo.clip cr;
+    *)
+    ()
 ;;

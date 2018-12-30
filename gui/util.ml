@@ -1,7 +1,8 @@
-let dummy_ctx =
+(*let dummy_ctx =
     let module CI = Cairo.Image in
     let img = CI.create CI.ARGB32 1 1 in
     Cairo.create img
+    *)
 
 let clamp value minVal maxVal =
     let open Float in
@@ -14,7 +15,7 @@ let timeit name f =
     let start = Unix.time() in
     let res = f() in
     let end_ = Unix.time() in
-    Stdio.printf "%s time: %f\n%!" name (end_ -. start);
+    (*Stdio.printf "%s time: %f\n%!" name (end_ -. start);*)
     res
 ;;
 

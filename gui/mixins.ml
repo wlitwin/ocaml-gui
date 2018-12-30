@@ -55,7 +55,7 @@ object(self)
         ) :: eventHandlers
 end
 
-type event += Paint of Cairo.context
+type event += Paint of Platform.Windowing.Graphics.context
 
 type 'a layoutSubclass = 'a constraint 'a = #layoutable
 
@@ -142,7 +142,7 @@ class virtual drawable =
 object(self)
     inherit handlesEvent
 
-    method virtual onDraw : Cairo.context -> unit 
+    method virtual onDraw : Platform.Windowing.Graphics.context -> unit 
 
     initializer
         eventHandlers <-
@@ -199,7 +199,8 @@ object(self)
         let new_widget = self#focused in
         old_widget#postEvent Unfocused |> ignore;
         new_widget#postEvent Focused |> ignore;
-        app#redraw;
+        app#redrawWidget new_widget;
+        app#redrawWidget old_widget;
 
     method private sendToAll evt =
         Array.iter children (fun ch -> ch#postEvent evt |> ignore)

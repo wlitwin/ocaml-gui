@@ -1,3 +1,5 @@
+module Graphics = Platform.Windowing.Graphics
+
 type border_type = NoBorder
                  | Rectangle
                  | Rounded of float (* corner radius *)
@@ -42,8 +44,8 @@ class borderStyle = object(self)
         else rect
 
     method private setupBorderStyle cr =
-        Cairo.set_source_rgba cr color.r color.g color.b color.a;
-        Cairo.set_line_width cr size;
+        Graphics.set_color cr color;
+        Graphics.set_width cr size;
 
     method private drawRectangleBorder cr (rect : Rect.t) =
         let rect = Rect.{
@@ -52,14 +54,15 @@ class borderStyle = object(self)
             w = rect.w -. size;
             h = rect.h -. size;
         } in
-        Cairo.rectangle cr rect.x rect.y rect.w rect.h;
+        Graphics.rectangle cr rect;
         self#setupBorderStyle cr;
-        Cairo.stroke cr;
+        Graphics.stroke cr;
 
     method private drawRoundedBorder cr (rect : Rect.t) radius =
-        Paint.rounded_rect cr rect radius;
+        (*Paint.rounded_rect cr rect radius;
         self#setupBorderStyle cr;
-        Cairo.stroke cr;
+        Cairo.stroke cr;*)
+        ()
 
     method drawBorder cr (rect : Rect.t) =
         match style with

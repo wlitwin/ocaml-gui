@@ -1,3 +1,5 @@
+module Graphics = Platform.Windowing.Graphics
+
 class textBoxWidget app = object(self)
     inherit Widget.basicWidget app as super
 
@@ -27,7 +29,7 @@ class textBoxWidget app = object(self)
         (if String.(=) text "" then "default_size" else text)
 
     method measureText cr text =
-        Text.measure_text ~cr style#fontInfo text
+        Text.measure_text cr style#fontInfo text
 
     method drawText cr =
         Text.draw_text cr rect style self#renderText
@@ -95,16 +97,16 @@ class textBoxWidget app = object(self)
 
     method private drawCursor cr =
         if showCursor then begin
-            Cairo.save cr;
+            Graphics.save cr;
             let text = String.sub self#renderText 0 cursorLoc in
-            let size = Text.measure_text ~cr style#fontInfo text in
+            let size = Text.measure_text cr style#fontInfo text in
             let fgColor = style#fgColor in
-            Color.set cr fgColor;
-            Cairo.set_line_width cr 1.;
-            Cairo.move_to cr (rect.x +. size.w) (rect.y +. rect.h);
-            Cairo.line_to cr (rect.x +. size.w) rect.y;
-            Cairo.stroke cr;
-            Cairo.restore cr;
+            Graphics.set_color cr fgColor;
+            Graphics.set_width cr 1.;
+            Graphics.move_to cr (rect.x +. size.w) (rect.y +. rect.h);
+            Graphics.line_to cr (rect.x +. size.w) rect.y;
+            Graphics.stroke cr;
+            Graphics.restore cr;
         end
 
     method! paint cr =

@@ -1,3 +1,5 @@
+module Graphics = Platform.Windowing.Graphics
+
 type scrollBarType = VerticalScroller
                    | HorizontalScroller
 
@@ -26,28 +28,28 @@ class scrollBar app scrollType = object(self)
     method private paintVertical cr =
         let open Float in
         let barHeight = min (ratio *. rect.h) rect.h in
-        Cairo.set_source_rgba cr 0. 0. 0. 1.;
+        Graphics.set_color cr Color.black;
         let y = rect.y +. pos *. (rect.h -. barHeight) in
-        Cairo.rectangle cr rect.x y barSize barHeight;
-        Cairo.fill cr
+        Graphics.rectangle cr Rect.{x=rect.x; y; w=barSize; h=barHeight};
+        Graphics.fill cr
 
     method private paintHorizontal cr =
         let open Float in
         let barWidth  = min (ratio *. rect.w) rect.w in
-        Cairo.set_source_rgba cr 0. 0. 0. 1.;
+        Graphics.set_color cr Color.black;
         let x = rect.x +. pos *. (rect.w -. barWidth) in
-        Cairo.rectangle cr x rect.y barWidth barSize;
-        Cairo.fill cr
+        Graphics.rectangle cr Rect.{x; y=rect.y; w=barWidth; h=barSize};
+        Graphics.fill cr
 
     method! onDraw cr =
         if Float.(ratio < 1.) then
             super#onDraw cr
 
     method! paint cr =
-        Cairo.clip_reset cr;
-        Cairo.set_source_rgba cr 1. 1. 1. 1.;
-        Cairo.rectangle cr rect.x rect.y rect.w rect.h;
-        Cairo.fill cr;
+        Graphics.clip_reset cr;
+        Graphics.set_color cr Color.white;
+        Graphics.rectangle cr rect;
+        Graphics.fill cr;
         match scrollType with
         | VerticalScroller -> self#paintVertical cr
         | HorizontalScroller -> self#paintHorizontal cr
@@ -137,6 +139,7 @@ object(self)
 
     method! paint cr =
         (* Create a cairo surface *)
+        (*
         Cairo.save cr;
         let module CI = Cairo.Image in
         let r = rect in
@@ -154,4 +157,6 @@ object(self)
         Cairo.restore cr;
         vertScroller#onDraw cr;
         horzScroller#onDraw cr;
+        *)
+        ()
 end
