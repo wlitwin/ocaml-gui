@@ -17,18 +17,6 @@ js:
 js_debug:
 	$(OCAMLBUILD) -plugin-tag "package(js_of_ocaml.ocamlbuild)" -cflags -annot,-bin-annot,'-open Base' -pkg $(JS_PKGS) $(COMMON_INCLUDES) -tag debug -I backends/canvas/ src/main.js
 
-JS_TARGET=main
-
-js2:
-	ocamlfind ocamlc -open Base -annot -bin-annot -package base -package js_of_ocaml -package js_of_ocaml-ppx -thread -ppx -linkpkg -o js_gui/$(JS_TARGET).byte js_gui/$(JS_TARGET).ml
-	js_of_ocaml js_gui/$(JS_TARGET).byte
-	mv js_gui/*.annot _build/js_gui/.
-	mv js_gui/*.binannot _build/js_gui/.
-	mv js_gui/*.cmo _build/js_gui/.
-	mv js_gui/*.cmi _build/js_gui/.
-	mv js_gui/*.byte _build/js_gui/.
-	mv js_gui/*.js _build/js_gui/.
-
 run_js:
 	firefox js_gui/index.html
 
