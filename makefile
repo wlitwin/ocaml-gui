@@ -24,7 +24,7 @@ opt2:
 	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread -I src -I gui src/main.native
 
 opt:
-	$(OCAMLBUILD) -ocamlc ocamlopt -ocamlopt ocamlopt -tag thread -cflags '-open Base',-unsafe,-annot,-bin-annot,-noassert,-unbox-closures,-unboxed-types,-nodynlink,-O3,-rounds=4,-unbox-closures-factor=100 -pkg $(PKGS) -I src -I gui src/main.native
+	$(OCAMLBUILD) -ocamlc ocamlopt -ocamlopt ocamlopt -cflags -annot,-bin-annot,'-open Base',-unsafe,-noassert,-nodynlink,-unbox-closures,-unboxed-types,-O3,-rounds=4,-unbox-closures-factor=100 -pkg $(PKGS) -tag thread $(COMMON_INCLUDES) -I backends/gtk -I src src/main.native
 
 prof:
 	$(OCAMLBUILD) -cflags -annot,-bin-annot -pkg $(PKGS) -I src src/main.p.native

@@ -155,8 +155,8 @@ object(self)
         Cairo.set_source_surface cr img x y;
         Cairo.paint cr;
         Cairo.restore cr;
+        *)
         vertScroller#onDraw cr;
         horzScroller#onDraw cr;
-        *)
         ()
 end

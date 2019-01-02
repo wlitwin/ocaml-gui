@@ -158,7 +158,13 @@ module Windowing : PlatformSig.WindowingSig = struct
         gtk_window#show()
     ;;
 
-    let graphics_context context = Cairo_gtk.create context.window#misc#window
+    let dummy_ctx = 
+        let module CI = Cairo.Image in
+        let img = CI.create CI.ARGB32 1 1 in
+        Cairo.create img
+    ;;
+
+    let graphics_context context = dummy_ctx
 
     let set_title context title =
         context.window#set_title title
