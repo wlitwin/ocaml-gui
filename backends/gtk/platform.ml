@@ -19,6 +19,9 @@ module CairoGraphics = struct
         | Font.Bold -> Cairo.Bold
     ;;
 
+    let translate cr x y =
+        Cairo.translate cr x y
+
     let measure_text cr (font_info : Font.t) text : Font.metrics =
         let weight = font_weight_to_cairo font_info.weight in
         save cr;

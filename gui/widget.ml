@@ -20,6 +20,9 @@ class basicWidget app = object(self)
     inherit drawable
     inherit focusable
 
+    method shouldClip = shouldClip
+    method setShouldClip b = shouldClip <- b
+
     method setLayout l =
         layout <- Some l
 

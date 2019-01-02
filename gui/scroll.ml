@@ -94,10 +94,10 @@ object(self)
         let sz = cont#preferredSize in
         let w = max rect.w sz.w
         and h = max rect.h sz.h in
-        cont#onResize Rect.{x=0.; y=0.; w; h} |> ignore;
         (* Position the scroll bars *)
         let barSizeH = vertScroller#barSize in
         let barSizeW = horzScroller#barSize in
+        cont#onResize Rect.{x=0.; y=0.; w; h} |> ignore;
         vertScroller#setRatio (rect.h /. h);
         horzScroller#setRatio (rect.w /. w);
         vertScroller#resize Rect.{x=rect.x +. rect.w -. barSizeW; 
@@ -139,24 +139,12 @@ object(self)
 
     method! paint cr =
         (* Create a cairo surface *)
-        (*
-        Cairo.save cr;
-        let module CI = Cairo.Image in
-        let r = rect in
-        let w, h = Util.iceil r.w, Util.iceil r.h in
-        let img = CI.create CI.ARGB32 w h in
-        let cri = Cairo.create img in
+        Graphics.save cr;
         let ox = self#offsetX
         and oy = self#offsetY in
-        Cairo.translate cri (-.ox) (-.oy);
-        cont#onDraw cri;
-        let x = rect.x in
-        let y = rect.y in
-        Cairo.set_source_surface cr img x y;
-        Cairo.paint cr;
-        Cairo.restore cr;
-        *)
+        Graphics.translate cr (rect.x -. ox) (rect.y -. oy);
+        cont#onDraw cr;
+        Graphics.restore cr;
         vertScroller#onDraw cr;
         horzScroller#onDraw cr;
-        ()
 end

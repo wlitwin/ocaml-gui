@@ -27,6 +27,7 @@ let convert_code_to_key code =
     | "KeyX" -> Keys.X
     | "KeyY" -> Keys.Y
     | "KeyZ" -> Keys.Z
+    | "Tab" -> Keys.Tab
     | "ArrowLeft" -> Keys.LArrow
     | "ArrowRight" -> Keys.RArrow
     | "ArrowUp" -> Keys.UArrow

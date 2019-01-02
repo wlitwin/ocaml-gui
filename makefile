@@ -4,7 +4,7 @@ OCAMLBUILD = ocamlbuild -use-ocamlfind
 
 PKGS=cairo2,cairo2.lablgtk2,lablgtk2,lablgtk2-extras,base,extlib,core
 #,ocamlgraph,ocamlgraph.dgraph
-JS_PKGS=base,js_of_ocaml,js_of_ocaml-ocamlbuild,js_of_ocaml-ppx
+JS_PKGS=base,js_of_ocaml,js_of_ocaml-ocamlbuild,js_of_ocaml-ppx,extlib
 
 COMMON_INCLUDES=-I apps/ -I gui/ -I backends/sigs/
 

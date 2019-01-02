@@ -32,6 +32,8 @@ module type GraphicsSig = sig
     val stroke : context -> unit
     val fill : context -> unit
 
+    val translate : context -> float -> float -> unit
+
     val measure_text : context -> Font.t -> string -> Font.metrics
     val draw_text : context -> Font.t -> Rect.t -> string -> unit
 

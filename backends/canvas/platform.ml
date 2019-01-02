@@ -28,6 +28,9 @@ module CanvasGraphics = struct
        Js.export "cvar" c;
        { canvas=c; canvas_elem=canvas; }
 
+    let translate context x y =
+        context.canvas##translate x y
+
     let save context =
         context.canvas##save
 
@@ -132,6 +135,7 @@ module Windowing : PlatformSig.WindowingSig = struct
         mutable resize     : Size.t -> unit;
         mutable keyPress   : Keys.key -> unit;
         mutable keyRelease : Keys.key -> unit;
+        mutable draw_callback : (float -> unit) Js.callback;
     }
 
     let create () = {
@@ -140,12 +144,13 @@ module Windowing : PlatformSig.WindowingSig = struct
         resize = ignore;
         keyPress = ignore;
         keyRelease = ignore;
+        draw_callback = Js.wrap_callback ignore
     }
 
     let wrapped_draw context =
-        Graphics.save context.canvas;
-        context.draw context.canvas;
-        Graphics.restore context.canvas;
+        Dom_html.window##requestAnimationFrame 
+            context.draw_callback
+            |> ignore
     ;;
 
     let init
@@ -161,7 +166,10 @@ module Windowing : PlatformSig.WindowingSig = struct
         context.resize <- resize;
         context.keyPress <- keyPress;
         context.keyRelease <- keyRelease;
-        Dom_html.window##.document##.title := (Js.string title)
+        Dom_html.window##.document##.title := (Js.string title);
+        context.draw_callback <- Js.wrap_callback (fun _ ->
+            context.draw context.canvas
+        );
     ;;
 
     let graphics_context context = context.canvas

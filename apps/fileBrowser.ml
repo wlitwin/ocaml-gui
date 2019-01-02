@@ -1,10 +1,31 @@
 type 'a layoutable = 'a constraint 'a = #Mixins.layoutable
 let cl (l : _ layoutable) = (l :> Mixins.layoutable) 
 
+let strs = [|
+    "Hello";
+    "World";
+    "Cool";
+    "Awesome";
+|]
+
+let build_str () =
+    let i1 = Random.int 4 in
+    let i2 = Random.int 4 in
+    strs.(i1) ^ strs.(i2)
+
+let create_strings =
+    let rec f acc n = 
+        if n <= 0 then acc
+        else f (build_str() :: acc) (n - 1)
+    in
+    f [] 200
+;;
+
 let readDir app path =
     try
-        let dir = "." :: ".." :: Core.Sys.ls_dir path in
-        dir
+        (*let dir = "." :: ".." :: Core.Sys.ls_dir path in
+        dir*)
+        create_strings 
         |> List.sort ~compare:String.compare
         |> List.map ~f:(fun s -> new Label.label app ~text:s)
     with _ -> 
@@ -25,7 +46,9 @@ object(self)
 
     method private updatePath =
         let lbls = readDir app txtPath#text in
-        fileList#setContents (List.map lbls (fun i -> (i :> Mixins.layoutable)));
+        fileList#setContents (List.map lbls (fun i -> 
+            i#setShouldClip false;
+            (i :> Mixins.layoutable)));
         scroll#resize scroll#fullRect
 
     initializer
