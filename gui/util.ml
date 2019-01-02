@@ -6,10 +6,10 @@ let clamp value minVal maxVal =
 ;;
 
 let timeit name f =
-    let start = Unix.time() in
+    let start = Unix.gettimeofday() in
     let res = f() in
-    let end_ = Unix.time() in
-    Caml.print_endline Printf.(sprintf "%s time: %f\n" name (end_ -. start));
+    let end_ = Unix.gettimeofday() in
+    Caml.print_endline Printf.(sprintf "%s time: %fms\n" name ((end_ -. start) *. 1000.));
     res
 ;;
 
