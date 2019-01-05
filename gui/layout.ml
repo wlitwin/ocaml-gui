@@ -17,7 +17,7 @@ object(self)
     method removeLayoutable id =
         DynArray.filter (fun l -> l#id <> id) items
 
-    method items = DynArray.to_list items
+    method items = items 
 
     method private virtual ratioLayout : Rect.t -> unit
     method private virtual preferredLayout : Rect.t -> unit
@@ -39,20 +39,20 @@ object(self)
     val id = 0
     val mutable eventHandlers = []
     val mutable snoopers = []
-    val mutable items = [item]
+    val mutable items = DynArray.of_list [item]
 
-    method item = List.hd_exn items
+    method item = DynArray.get items 0
 
     method items = items
 
     method removeLayoutable _ =
-        items <- []
+        items <- DynArray.create()
 
     method preferredSize =
         self#preferredSize
 
     method addLayoutable l =
-        items <- [(l :> layoutable)]
+        DynArray.set items 0 (l :> layoutable)
 
     method layout r =
         self#item#postEvent (Resize r) |> ignore
@@ -68,14 +68,14 @@ object(self)
     val mutable eventHandlers = []
     val mutable snoopers = []
 
-    val mutable items : grid_data list = []
+    val mutable items : grid_data DynArray.t = DynArray.create()
 
-    method items = List.map items (fun data -> data.item)
+    method items = DynArray.map (fun data -> data.item) items
 
     method private calcAbsArrays =
         let max_x = Array.create dimx 0.
         and max_y = Array.create dimy 0. in
-        List.iter items (fun data ->
+        DynArray.iter (fun data ->
             let sz = data.item#preferredSize in
             let sz = Size.{w=sz.w /. data.span.w; h=sz.h /. data.span.h} in
             let x_start = Int.of_float data.pos.x in
@@ -88,7 +88,7 @@ object(self)
             for i=y_start to y_end-1 do
                 max_y.(i) <- Float.max max_y.(i) sz.h
             done;
-        );
+        ) items;
         max_x, max_y
 
     method private calcRatioArrays =
@@ -110,9 +110,9 @@ object(self)
         Size.{w=sum_x; h=sum_y}
 
     method removeLayoutable id =
-        items <- List.filter items (fun data ->
+        DynArray.filter (fun data ->
             data.item#id <> id
-        )
+        ) items
 
     method addLayoutable l =
         (* TODO - find next available cell *)
@@ -121,7 +121,7 @@ object(self)
     method addToCell ?(rows=1) ?(cols=1) (x : int) (y : int) item = 
         let pos = Pos.{x=Float.of_int x; y=Float.of_int y} in
         let span = Size.{w=Float.of_int cols; h=Float.of_int rows} in
-        items <- {pos; span; item} :: items
+        DynArray.add items {pos; span; item}
 
     method layout r =
         let xarr, yarr = self#calcRatioArrays in
@@ -154,7 +154,7 @@ object(self)
         in
         let prefix_x = calc_prefix xarr
         and prefix_y = calc_prefix yarr in
-        List.iter items (fun meta_data ->
+        DynArray.iter (fun meta_data ->
             let dims = calc_dims meta_data in
             let xoff = prefix_x.(Int.(of_float meta_data.pos.x))
             and yoff = prefix_y.(Int.(of_float meta_data.pos.y)) in
@@ -164,7 +164,7 @@ object(self)
                 w=dims.w*.r.w;
                 h=dims.h*.r.h;
             } |> ignore
-        )
+        ) items
 end
 
 class horizontalLayout =

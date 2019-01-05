@@ -139,12 +139,11 @@ object(self)
 
     method! paint cr =
         (* Create a cairo surface *)
-        Graphics.save cr;
         let ox = self#offsetX
         and oy = self#offsetY in
         Graphics.translate cr (rect.x -. ox) (rect.y -. oy);
         cont#onDraw cr;
-        Graphics.restore cr;
+        Graphics.identity_transform cr;
         vertScroller#onDraw cr;
         horzScroller#onDraw cr;
 end

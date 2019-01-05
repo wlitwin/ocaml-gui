@@ -210,7 +210,7 @@ let layout rect deps =
 
 class constraintLayout rules =
     let deps = DependencyGraph.calculate_dependency_graph rules in
-    let items = List.map rules (fun r -> r.item) in
+    let items = List.map rules (fun r -> r.item) |> DynArray.of_list in
 object(self)
     inherit Mixins.layout as super
 

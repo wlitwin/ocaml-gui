@@ -1,5 +1,8 @@
 module Graphics = Platform.Windowing.Graphics
 
+module Cached = struct
+end
+
 class textBoxWidget app = object(self)
     inherit Widget.basicWidget app as super
 
@@ -9,9 +12,15 @@ class textBoxWidget app = object(self)
     val mutable passwordChar = 'x'
     val mutable hideText = false
 
+    val mutable measuredCached = Font.empty_metrics
+    val mutable defaultCached = Font.empty_metrics
+
     method setText new_text =
         text <- new_text;
-        self#moveCursorToEnd
+        self#moveCursorToEnd;
+        let ctx = app#graphicsContext in
+        measuredCached <- Graphics.measure_text ctx style#fontInfo text;
+        defaultCached <- Graphics.measure_text ctx style#fontInfo "default_size";
 
     method showCursor = showCursor
     method setShowCursor b = showCursor <- b
@@ -25,12 +34,17 @@ class textBoxWidget app = object(self)
     method text = text
 
     method contentSize =
-        self#measureText app#graphicsContext
-        (if String.(=) text "" then "default_size" else text)
+        let metrics = 
+            if String.is_empty text then defaultCached
+            else measuredCached 
+        in
+        Size.{w=metrics.width; h=metrics.ascent +. metrics.descent}
 
+        (*
     method measureText cr text =
         let metrics = Graphics.measure_text cr style#fontInfo text in
         Size.{w=metrics.width; h=metrics.ascent +. metrics.descent}
+        *)
 
     method drawText cr =
         Graphics.draw_text cr style#fontInfo rect self#renderText

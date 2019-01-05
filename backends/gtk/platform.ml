@@ -22,14 +22,17 @@ module CairoGraphics = struct
     let translate cr x y =
         Cairo.translate cr x y
 
+    let identity_transform cr =
+        Cairo.identity_matrix cr
+
     let measure_text cr (font_info : Font.t) text : Font.metrics =
         let weight = font_weight_to_cairo font_info.weight in
-        save cr;
+        (*save cr;*)
         Cairo.set_font_size cr font_info.size;
         Cairo.select_font_face cr font_info.font ~weight;
         let fe = Cairo.font_extents cr in
         let te = Cairo.text_extents cr text in
-        restore cr;
+        (*restore cr;*)
         (*Size.{w=(*te.width +. te.x_bearing +.*) te.x_advance; h=fe.ascent +. fe.descent}*)
         Font.{
             width = te.x_advance;
@@ -43,19 +46,20 @@ module CairoGraphics = struct
     let draw_text cr (font_info : Font.t) (rect : Rect.t) text =
         let open Rect in
         let open Color in
-        save cr;
+        (*save cr;*)
         Cairo.select_font_face cr font_info.font ~weight:(font_weight_to_cairo font_info.weight);
         Cairo.set_font_size cr font_info.size;
-        let hint = measure_text cr font_info text in
+        (*let hint = measure_text cr font_info text in*)
         (*let color = style#fgColor in*)
         (*Cairo.set_source_rgba cr color.r color.g color.b color.a;*)
         set_color cr Color.black;
-        let offset = Float.(max 0. (hint.width -. rect.w)) in
+        (*let offset = Float.(max 0. (hint.width -. rect.w)) in*)
         let fe = Cairo.font_extents cr in
         (*Cairo.move_to cr (rect.x -. offset) (rect.y +. rect.h -. fe.Cairo.descent);*)
-        Cairo.move_to cr (rect.x -. offset) (rect.y +. fe.Cairo.ascent);
+        (*Cairo.move_to cr (rect.x -. offset) (rect.y +. fe.Cairo.ascent);*)
+        Cairo.move_to cr rect.x (rect.y +. fe.Cairo.ascent);
         Cairo.show_text cr text;
-        restore cr;
+        (*restore cr;*)
     ;;
 
     let rectangle cr rect =

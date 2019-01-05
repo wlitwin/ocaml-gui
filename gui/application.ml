@@ -37,7 +37,7 @@ object(self)
         Platform.Windowing.request_redraw window
 
     method resize (size : Size.t) =
-        Util.timeit "resize" (fun _ ->
+         Util.timeit "resize" (fun _ ->
             self#widget#postEvent (Mixins.Resize Rect.{x=0.;y=0.;w=size.w;h=size.h}) |> ignore;
         );
         self#redraw;

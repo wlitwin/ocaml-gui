@@ -9,3 +9,5 @@ _build/
 *.cmx
 *.annot
 *.binannot
+perf.data
+perf.data.old

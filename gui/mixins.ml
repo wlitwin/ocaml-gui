@@ -67,7 +67,7 @@ object(self)
     method virtual addLayoutable : 'a. 'a layoutSubclass -> unit
     method virtual removeLayoutable : int -> unit
     method virtual layout : Rect.t -> unit
-    method virtual items : layoutable list
+    method virtual items : layoutable DynArray.t
 
     method! onResize r =
         let res = super#onResize r in
@@ -78,7 +78,9 @@ object(self)
         let forward item evt = item#postEvent evt |> ignore in
         eventHandlers <- (function
             | Paint cr -> 
-                List.iter self#items (fun item -> forward item (Paint cr));
+                DynArray.iter (fun item -> 
+                    forward item (Paint cr)
+                ) self#items;
                 Propagate
             | _ -> Propagate) :: eventHandlers
 end

@@ -18,14 +18,14 @@ let create_strings =
         if n <= 0 then acc
         else f (build_str() :: acc) (n - 1)
     in
-    f [] 200
+    f [] 1000
 ;;
 
 let readDir app path =
     try
-        (*let dir = "." :: ".." :: Core.Sys.ls_dir path in
-        dir*)
-        create_strings 
+        let dir = "." :: ".." :: Core.Sys.ls_dir path in
+        dir
+        (*create_strings*)
         |> List.sort ~compare:String.compare
         |> List.map ~f:(fun s -> new Label.label app ~text:s)
     with _ -> 

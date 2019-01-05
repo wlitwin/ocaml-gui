@@ -31,6 +31,9 @@ module CanvasGraphics = struct
     let translate context x y =
         context.canvas##translate x y
 
+     let identity_transform context =
+         Js.Unsafe.(coerce context.canvas)##resetTransform
+
     let save context =
         context.canvas##save
 
@@ -51,8 +54,7 @@ module CanvasGraphics = struct
                     | Bold -> "700"
         in
         let size = Printf.sprintf "%dpx" Float.(to_int font_info.size) in
-        let font_string = Printf.sprintf "%s %s %s" style size "serif" in
-        Caml.print_endline font_string;
+        let font_string = Printf.sprintf "%s %s '%s'" style size font_info.font in
         context.canvas##.font := Js.string font_string
     ;;
 
@@ -193,7 +195,6 @@ module Windowing : PlatformSig.WindowingSig = struct
                 let doc = Dom_html.window##.document in
                 let body = doc##.body in
                 let w, h = body##.offsetWidth, body##.offsetHeight in
-                Caml.print_endline Printf.(sprintf "Window resized %d %d\n" w h);
                 context.canvas.canvas_elem##.width := w;
                 context.canvas.canvas_elem##.height := h;
                 context.resize Size.{w=Float.of_int w; h=Float.of_int h};
@@ -201,7 +202,6 @@ module Windowing : PlatformSig.WindowingSig = struct
                 Js._true
             );
             window##.onkeydown := Dom_html.handler (fun evt ->
-                Caml.print_endline Printf.(sprintf "Key code is %d\n" evt##.keyCode);
                 let code : Js.js_string Js.t Js.optdef = evt##.code in
                 context.keyPress (KeyConverter.convert_code_to_key code);
                 Dom.preventDefault evt;
