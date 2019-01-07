@@ -24,6 +24,49 @@ end
 
 type 'a callable = <call : 'a -> unit>
 
+type ('ty, 'v) attached =
+    | End : ('v, 'v) attached
+    | Event : ('ty, 'v) attached
+    | Cons : 'a * ('ty, 'v) attached -> ('a  -> 'ty, 'v) attached
+
+let ok = Cons (`Resize, Event)
+let ok2 = match ok with
+    | Cons (`Resize, End) -> Stdio.printf "OK"
+    | Cons (`Resize, Event) -> Stdio.printf "OK"
+    | _ -> ()
+;;
+
+module type EventSig = sig
+    type t
+    type param
+    val event : t
+    val create : param -> (t * param)
+end
+
+module ResizeEvent = struct
+    type t = Resize
+    type param = Rect.t
+    let event = Resize
+    let create p =
+        Resize, p
+end
+
+module PaintEvent = struct
+    type t = Paint
+    type param = int
+    let event = Paint
+    let create p =
+        Paint, p
+end
+
+let _ =
+    let p = (module PaintEvent : EventSig) in
+    ()
+    (*
+    Hashtbl.set p ResizeEvent.event (fun _ -> ());
+    Hashtbl.set p PaintEvent.event (fun _ -> ());*)
+;;
+
 class virtual ['a] baseClass = object 
     val virtual table : ('a, 'a callable list) HP.t
     val virtual rev_table : ('a callable, 'a list) HP.t
@@ -54,6 +97,10 @@ class virtual ['a] baseClass = object
         | Some lst -> List.iter lst (fun obj -> obj#call evt)
 end
 
+module type Evt = sig
+    type t
+end
+
 type cool_events = OK1
                  | OK2
 
@@ -74,7 +121,7 @@ class virtual ['a] cool2 = object(self)
     inherit ['a] baseClass
 
     initializer
-        (Event.repeat self `Paint (fun _ ->
+        (Event_new.repeat self `Paint (fun _ ->
             Stdio.printf "PAINT\n";
         ))#attach
 end
