@@ -1,6 +1,18 @@
 open Mixins
 module Graphics = Platform.Windowing.Graphics
 
+let z = object
+    method drawList = [
+        `Rectangle Color.black;
+        `Text "Hello";
+    ]
+end
+
+(* OR have a composite step 
+ *
+ * So that widgets draw to an internal buffer
+ * then a compositor takes over the rest *)
+
 type 'a layout = 'a constraint 'a = Mixins.layout
 
 class basicWidget app = object(self)

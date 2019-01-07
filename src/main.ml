@@ -1,4 +1,6 @@
+module E = Events
 
+(*
 let _ =
     Platform.Windowing.run (fun context ->
         let app = new Application.application context Rect.{w=400.; h=400.} in
@@ -9,3 +11,4 @@ let _ =
         app#setWidget (mainWidget :> Widget.basicWidget);
         app#main
     )
+    *)

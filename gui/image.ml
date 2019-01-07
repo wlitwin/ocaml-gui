@@ -46,9 +46,11 @@ object(self)
         (*Stdio.printf "PAINTING %f %f %f %f - Scale is %f %f\n" rect.x rect.y rect.w rect.h scaleX scaleY;*)
         let pat = CP.create_for_surface cimg in
         CP.set_filter pat filter;
+        (*
         Cairo.translate cr rect.x rect.y;
         Cairo.rectangle cr 0. 0. rect.w rect.h;
         Cairo.scale cr scaleX scaleY;
         Cairo.set_source cr pat;
         Cairo.fill cr;
+        *)
 end
