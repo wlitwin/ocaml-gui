@@ -1,4 +1,4 @@
-type item = Mixins.layoutable
+type item = (Widget.input, Widget.output) Layoutable.layoutable
 
 type dep_field = DLeft
                | DRight
@@ -212,7 +212,12 @@ class constraintLayout rules =
     let deps = DependencyGraph.calculate_dependency_graph rules in
     let items = List.map rules (fun r -> r.item) |> DynArray.of_list in
 object(self)
-    inherit Mixins.layout as super
+    inherit [Widget.input, Widget.output] Layout.layout as super
+
+    val events = HandlesEvent.create()
+    
+    val table = Hashtbl.Poly.create()
+    val rev_table = Hashtbl.Poly.create()
 
     val id = 0
     val mutable eventHandlers = []

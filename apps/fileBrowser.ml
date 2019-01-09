@@ -1,5 +1,5 @@
-type 'a layoutable = 'a constraint 'a = #Mixins.layoutable
-let cl (l : _ layoutable) = (l :> Mixins.layoutable) 
+type 'a layoutable = 'a constraint 'a = #Layoutable.layoutable
+let cl (l : _ layoutable) = (l :> Layoutable.layoutable) 
 
 let strs = [|
     "Hello";
@@ -32,6 +32,7 @@ let readDir app path =
         [new Label.label app ~text:("Invalid path: " ^ path)]
 ;;
 
+(*
 class fileBrowser app =
     let lblPath = new Label.label app ~text:"Path" in
     let txtPath = new TextBox.textBoxWidget app in
@@ -48,15 +49,15 @@ object(self)
         let lbls = readDir app txtPath#text in
         fileList#setContents (List.map lbls (fun i -> 
             i#setShouldClip false;
-            (i :> Mixins.layoutable)));
+            (i :> Layoutable.layoutable)));
         scroll#resize scroll#fullRect
 
     initializer
         self#setPath "/";
-        txtPath#addSnoop (function
-            | Mixins.KeyDown Keys.Enter -> self#updatePath
+        HandlesKeyboard.(HandlesEvent.repeat txtPath KeyDown (function
+            | KeyDownArg Keys.Enter -> self#updatePath
             | _ -> ()
-        );
+        ))#attach;
         let open ConstraintLayout in
         let open ConstraintLayout.Constraint in
         let centerTop toCenter ref = FunDep ([(ref, DTop); (ref, DBottom)], fun fields ->
@@ -75,8 +76,9 @@ object(self)
             {item=lScroll; loc={top=bottomOf tPath 10.; left=wLeft 10.; right=wRight ~-.10.; bottom=wBottom ~-.10.}};
         ] in
         let layout = new constraintLayout rules in
-        self#setLayout (layout :> Mixins.layout)
+        self#setLayout (layout :> Layout.layout)
 
-    inherit Mixins.focusManager app [(txtPath :> Mixins.handlesEvent);
-                                     (scroll :> Mixins.handlesEvent)]
+    inherit Focusable.focusManager app [(txtPath :> HandlesEvent.handlesEvent);
+                                        (scroll :> HandlesEvent.handlesEvent)]
 end
+*)

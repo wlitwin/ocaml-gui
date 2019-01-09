@@ -6,7 +6,7 @@ object(self)
     inherit TextBox.textBoxWidget app as super
 
     method! onKeyDown _ = 
-        Mixins.Propagate
+        ()
 
     initializer
         showCursor <- false;

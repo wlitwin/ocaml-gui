@@ -6,7 +6,7 @@ PKGS=cairo2,cairo2.lablgtk2,lablgtk2,lablgtk2-extras,base,extlib,core
 #,ocamlgraph,ocamlgraph.dgraph
 JS_PKGS=base,js_of_ocaml,js_of_ocaml-ocamlbuild,js_of_ocaml-ppx,extlib
 
-COMMON_INCLUDES=-I apps/ -I gui/ -I backends/sigs/
+COMMON_INCLUDES=-I apps/ -I gui/ -I backends/sigs/ -I gui/layout/
 
 dbg:
 	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread $(COMMON_INCLUDES) -I backends/gtk -I src src/main.d.byte

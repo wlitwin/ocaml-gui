@@ -30,7 +30,7 @@ object(self)
     method widget = Option.value_exn widget
     method setWidget w = widget <- Some w
 
-    method redrawWidget (widget : Mixins.handlesEvent) : unit =
+    method redrawWidget (widget : Widget.basicWidget) : unit =
         self#redraw
 
     method redraw =
@@ -38,7 +38,9 @@ object(self)
 
     method resize (size : Size.t) =
          Util.timeit "resize" (fun _ ->
-            self#widget#postEvent (Mixins.Resize Rect.{x=0.;y=0.;w=size.w;h=size.h}) |> ignore;
+            let open Layoutable in
+            self#widget#events#handle HandlesEvent.(mkEvent `Resize (`ResizeArg Rect.{x=0.;y=0.;w=size.w;h=size.h}));
+            ()
         );
         self#redraw;
 
@@ -52,16 +54,16 @@ object(self)
 
     method private keyDown key =
         self#checkSuperKeys key true;
-        self#widget#postEvent (Mixins.KeyDown key) |> ignore;
+        HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyDown (`KeyDownArg key)))
 
     method private keyUp key =
         self#checkSuperKeys key false;
-        self#widget#postEvent (Mixins.KeyUp key) |> ignore;
+        HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyUp (`KeyUpArg key)))
 
     method private draw (cr : Platform.Windowing.Graphics.context) =
         Util.timeit "draw" (fun _ ->
             try
-                self#widget#postEvent (Mixins.Paint cr) |> ignore
+                Drawable.(self#widget#events#handle HandlesEvent.(mkEvent `Paint (`PaintArg cr)))
             with e ->
                 (*Stdio.print_endline "==================== EXCEPTION OCCURRED ==================";
                 Stdio.print_endline (Exn.to_string e);

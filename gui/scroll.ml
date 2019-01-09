@@ -1,4 +1,5 @@
 module Graphics = Platform.Windowing.Graphics
+(*
 
 type scrollBarType = VerticalScroller
                    | HorizontalScroller
@@ -86,7 +87,6 @@ object(self)
         in
         fn ratio;
         self#invalidate;
-        Mixins.Propagate
 
     method! onResize r =
         super#onResize r |> ignore;
@@ -104,7 +104,6 @@ object(self)
                                   y=rect.y; h=rect.h; w=barSizeW};
         horzScroller#resize Rect.{x=rect.x;
                                   y=rect.y +. rect.h -. barSizeH; h=barSizeH; w=rect.w};
-        Mixins.Propagate
 
     method ensureVisible (region : Rect.t) =
         let open Float in
@@ -147,3 +146,4 @@ object(self)
         vertScroller#onDraw cr;
         horzScroller#onDraw cr;
 end
+*)

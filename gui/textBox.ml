@@ -90,7 +90,7 @@ class textBoxWidget app = object(self)
             text <- before ^ after;
             cursorLoc <- idx + 1;
 
-    method onKeyDown key =
+    method! onKeyDown key =
         let open Application in
         (match key with
         | Keys.Backspace -> self#deleteAtCursor
@@ -104,7 +104,6 @@ class textBoxWidget app = object(self)
         | key when Keys.is_printable key -> self#insertAtCursor (Keys.to_string key)
         | _ -> ());
         self#invalidate;
-        Mixins.Propagate
 
     method private renderText =
         if hideText then String.make (String.length text) passwordChar

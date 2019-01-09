@@ -28,8 +28,36 @@ type ('ty, 'v) attached =
     | End : ('v, 'v) attached
     | Event : ('ty, 'v) attached
     | Cons : 'a * ('ty, 'v) attached -> ('a  -> 'ty, 'v) attached
+    | Args : 'a * 'b * ('ty, 'v) attached -> ('a * 'b, 'v) attached
+    (*| Any:'a attached -> attached*)
+
+type any_expr = Any : ('a, 'b) attached -> any_expr
 
 let ok = Cons (`Resize, Event)
+let ok2 = Args (`Resize, Rect.empty, End)
+let ok3 = Args (`Paint, 10, End)
+let argit = function
+    | Args (a, _, _) -> a
+    | _ -> failwith "OKOK"
+;;
+let _ =
+    let lst = 
+        let equal = (fun a b -> Poly.(=) a b) in
+        let lst = [] in
+        let lst = List.Assoc.add lst ~equal (argit ok2) (fun (a, b) -> ()) in
+        let lst = List.Assoc.add lst ~equal (argit ok3) (fun (a, b) -> ()) in
+        lst
+    in
+    let post evt arg =
+        List.iter lst (fun (k, f) ->
+            if Poly.(=) k evt then
+                f (evt, arg)
+        )
+    in
+    post `Resize (`Resize Rect.empty);
+    post `Paint (`Paint 10);
+;;
+
 let ok2 = match ok with
     | Cons (`Resize, End) -> Stdio.printf "OK"
     | Cons (`Resize, Event) -> Stdio.printf "OK"
@@ -59,17 +87,9 @@ module PaintEvent = struct
         Paint, p
 end
 
-let _ =
-    let p = (module PaintEvent : EventSig) in
-    ()
-    (*
-    Hashtbl.set p ResizeEvent.event (fun _ -> ());
-    Hashtbl.set p PaintEvent.event (fun _ -> ());*)
-;;
-
-class virtual ['a] baseClass = object 
-    val virtual table : ('a, 'a callable list) HP.t
-    val virtual rev_table : ('a callable, 'a list) HP.t
+class virtual ['a, 'b] baseClass = object 
+    val virtual table : ('a, 'b callable list) HP.t
+    val virtual rev_table : ('b callable, 'a list) HP.t
 
     (* TODO can wrap FNs in <object> to make the comparable *)
     method addFn evt fn =
@@ -91,10 +111,10 @@ class virtual ['a] baseClass = object
                 | Some lst -> HP.set table evt (List.filter lst (fun o -> Poly.(<>) o obj))
             )
     
-    method handleEvent evt = 
+    method handleEvent evt arg = 
         match HP.find table evt with
         | None -> ()
-        | Some lst -> List.iter lst (fun obj -> obj#call evt)
+        | Some lst -> List.iter lst (fun obj -> obj#call arg)
 end
 
 module type Evt = sig
@@ -106,7 +126,7 @@ type cool_events = OK1
 
 
 class cool1 = object
-    inherit [cool_events] baseClass 
+    inherit [cool_events, cool_events] baseClass 
 
     val table : ('a, 'a callable list) HP.t = HP.create()
     val rev_table : ('a callable, 'a list) HP.t = HP.create()
@@ -115,27 +135,36 @@ end
 type cooler_events = COOL2
                    | COOL4 
 
-type 'a op = [> `OK | `OK2] as 'a
-
-class virtual ['a] cool2 = object(self)
-    inherit ['a] baseClass
+class virtual ['a, 'b] cool2 = object(self)
+    inherit ['a, 'b] baseClass
 
     initializer
+        self#addFn `Paint (object
+            method call arg =
+                match arg with
+                | _ -> Stdio.printf "Paint\n";
+        end);
         (Event_new.repeat self `Paint (fun _ ->
+            Stdio.printf "Paint\n";
+        ))#attach;
+        (Event_new.finish self `Paint (fun _ ->
+            Stdio.printf "OK\n";
+        ))#attach;
+    (*    (Event_new.repeat self `Paint (fun _ ->
             Stdio.printf "PAINT\n";
-        ))#attach
+        ))#attach*)
 end
 
 type common_events = [`Paint]
 
 class cool3 = object
-    inherit [[`Cool | common_events]] cool2
+    inherit [[`Cool | common_events], [`Cool of int | `Cool1 of string | `Paint]] cool2
 
-    val table : ('a, 'a callable list) HP.t = HP.create()
-    val rev_table : ('a callable, 'a list) HP.t = HP.create()
+    val table : ('a, _ callable list) HP.t = HP.create()
+    val rev_table : (_ callable, 'a list) HP.t = HP.create()
 end
 
-type ('a, 'b) hierarchy = Node of 'a baseClass * 'a * ('a -> ('b, 'b) hierarchy list)
+type ('a, 'b, 'c) hierarchy = Node of ('a, 'c) baseClass * 'a * ('a -> ('b, 'b, 'b) hierarchy list)
 
 let rec attach = function
     | Node (obj, evt, fn) ->
@@ -223,13 +252,15 @@ let _ =
     in
     *)
     (*altObj#attach;*)
-    c1#handleEvent OK1;
-    c1#handleEvent OK1;
-    c1#handleEvent OK2;
-    c2#handleEvent `Cool;
-    c2#handleEvent `Cool;
-    c1#handleEvent OK1;
-    c2#handleEvent `Cool;
+    c1#handleEvent OK1 OK1;
+    c1#handleEvent OK1 OK1;
+    c1#handleEvent OK2 OK2;
+    c2#handleEvent `Cool (`Cool 10);
+    c2#handleEvent `Cool (`Cool 10);
+    c2#handleEvent `Cool (`Cool 20);
+    c1#handleEvent OK1 OK1;
+    c2#handleEvent `Cool (`Cool1 "ok");
+    c2#handleEvent `Paint `Paint;
     (*
     attach (cycle());
     attach (test2());

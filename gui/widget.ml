@@ -13,7 +13,31 @@ end
  * So that widgets draw to an internal buffer
  * then a compositor takes over the rest *)
 
-type 'a layout = 'a constraint 'a = Mixins.layout
+(*type 'a layout = 'a constraint 'a = Mixins.layout*)
+
+type input =
+    [ `Click
+    | `Enter
+    | `Focused
+    | `KeyDown
+    | `KeyUp
+    | `Leave
+    | `Move
+    | `Paint
+    | `Resize
+    | `Unfocused ]
+
+type output =
+    [ `ClickArg of HandlesMouse.mouse_button * Pos.t
+    | `EnterArg of Pos.t
+    | `FocusedArg
+    | `KeyDownArg of Keys.key
+    | `KeyUpArg of Keys.key
+    | `LeaveArg of Pos.t
+    | `MoveArg of Pos.t
+    | `PaintArg of Drawable.PWG.context
+    | `ResizeArg of Rect.t
+    | `UnfocusedArg ]
 
 class basicWidget app = object(self)
     val id = 0
@@ -23,14 +47,20 @@ class basicWidget app = object(self)
     val mutable snoopers = []
     val mutable rect = Rect.empty
     val mutable shouldClip = true
-    val mutable layout : Mixins.layout option = None
+    val mutable layout : (input, output) Layout.layout option = None
+    val table = Hashtbl.Poly.create()
+    val rev_table = Hashtbl.Poly.create()
 
-    inherit styleable
-    inherit handlesMouse
-    inherit handlesKeyboard
-    inherit layoutable
-    inherit drawable
-    inherit focusable
+    inherit Stylable.styleable
+    inherit Drawable.drawable
+    inherit [input, output] Layoutable.layoutable
+    inherit HandlesMouse.handlesMouse
+    inherit HandlesKeyboard.handlesKeyboard
+    inherit Focusable.focusable
+
+    val events = HandlesEvent.create()
+
+    method events : (input, output) HandlesEvent.event_store = events
 
     method shouldClip = shouldClip
     method setShouldClip b = shouldClip <- b
@@ -39,7 +69,7 @@ class basicWidget app = object(self)
         layout <- Some l
 
     method invalidate : unit =
-        app#redrawWidget (self :> Mixins.handlesEvent)
+        app#redrawWidget self
 
     method contentSize = 
         match layout with
@@ -53,17 +83,19 @@ class basicWidget app = object(self)
         if shouldClip then Graphics.clip_rect cr self#fullRect
 
     method private sendEventToLayout event =
-        Option.iter layout (fun l -> l#postEvent event |> ignore)
+        ()
+    (*    Option.iter layout (fun l -> l#events#handleEvent event)*)
 
     method paint cr =
-        self#sendEventToLayout (Paint cr)
+        let open Drawable in
+        self#sendEventToLayout HandlesEvent.(mkEvent `Paint (`PaintArg cr))
 
     (* TODO - move this into mixins
      *)
     method onResize r =
+        let open Layoutable in
         rect <- style#borderStyle#insetRectByBorder r;
-        self#sendEventToLayout (Resize rect);
-        Mixins.Propagate
+        self#sendEventToLayout HandlesEvent.(mkEvent `Resize (`ResizeArg rect));
 
     method preferredSize =
         style#borderStyle#outsetSizeByBorder self#contentSize
