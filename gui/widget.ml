@@ -1,6 +1,6 @@
-open Mixins
 module Graphics = Platform.Windowing.Graphics
 
+(*
 let z = object
     method drawList = [
         `Rectangle Color.black;
@@ -17,6 +17,7 @@ end
 
 type input =
     [ `Click
+    | `Any
     | `Enter
     | `Focused
     | `KeyDown
@@ -38,8 +39,9 @@ type output =
     | `PaintArg of Drawable.PWG.context
     | `ResizeArg of Rect.t
     | `UnfocusedArg ]
+    *)
 
-class basicWidget app = object(self)
+class ['a, 'b] basicWidget app = object(self)
     val id = 0
     val style = new Style.style
     val application = app
@@ -47,20 +49,20 @@ class basicWidget app = object(self)
     val mutable snoopers = []
     val mutable rect = Rect.empty
     val mutable shouldClip = true
-    val mutable layout : (input, output) Layout.layout option = None
+    val mutable layout : ('a, 'b) Layout.layout option = None
     val table = Hashtbl.Poly.create()
     val rev_table = Hashtbl.Poly.create()
 
     inherit Stylable.styleable
     inherit Drawable.drawable
-    inherit [input, output] Layoutable.layoutable
+    inherit ['a, 'b] Layoutable.layoutable
     inherit HandlesMouse.handlesMouse
     inherit HandlesKeyboard.handlesKeyboard
     inherit Focusable.focusable
 
     val events = HandlesEvent.create()
 
-    method events : (input, output) HandlesEvent.event_store = events
+    method events : ('a, 'b) HandlesEvent.event_store = events
 
     method shouldClip = shouldClip
     method setShouldClip b = shouldClip <- b
@@ -69,7 +71,7 @@ class basicWidget app = object(self)
         layout <- Some l
 
     method invalidate : unit =
-        app#redrawWidget self
+        app#redrawWidget (self :> ('a, 'b) basicWidget)
 
     method contentSize = 
         match layout with
@@ -83,8 +85,7 @@ class basicWidget app = object(self)
         if shouldClip then Graphics.clip_rect cr self#fullRect
 
     method private sendEventToLayout event =
-        ()
-    (*    Option.iter layout (fun l -> l#events#handleEvent event)*)
+        Option.iter layout (fun l -> l#events#handle event)
 
     method paint cr =
         let open Drawable in

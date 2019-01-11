@@ -18,16 +18,23 @@ let create () = object(self)
     val table : ('a, (('a, 'b) callable) list) HP.t = HP.create()
     val rev_table : ((('a, 'b) callable), 'a list) HP.t = HP.create()
 
+    val mutable any_list : ([>`Any], 'b) callable list = []
+
     method addFn (evt : 'a) (obj : ('a, 'b) callable) =
-        (match HP.find table evt with
-        | None -> HP.set table evt [obj]
-        | Some lst -> HP.set table evt (obj:: lst)
-        );
-        match HP.find rev_table obj with
-        | None -> HP.set rev_table obj [evt]
-        | Some lst -> HP.set rev_table obj (evt :: List.filter lst (fun e -> Poly.(<>) e evt))
+        match evt with
+        | `Any -> any_list <- obj :: List.filter any_list (fun e -> Poly.(e <> obj))
+        | _ -> begin
+            (match HP.find table evt with
+            | None -> HP.set table evt [obj]
+            | Some lst -> HP.set table evt (obj :: lst)
+            );
+            match HP.find rev_table obj with
+            | None -> HP.set rev_table obj [evt]
+            | Some lst -> HP.set rev_table obj (evt :: List.filter lst (fun e -> Poly.(<>) e evt))
+        end
 
     method removeFn (obj : ('a, 'b) callable) : unit =
+        any_list <- List.filter any_list (fun e -> Poly.(e <> obj));
         match HP.find rev_table obj with
         | None -> ()
         | Some lst ->
@@ -38,53 +45,17 @@ let create () = object(self)
             )
 
     method handle (evt : ('a, 'b) event) : unit =
+        List.iter any_list (fun obj -> obj#call evt);
         match HP.find table evt#event with
-        | None -> ()
+        | None -> Stdio.printf "NONE\n";
         | Some lst -> List.iter lst (fun obj ->
             obj#call evt
         )
 end
 
-class virtual obj1 = object
-    val virtual events : ([>`Rect | `Ok], [>`RectP of int | `OkP of bool]) event_store
-
-    initializer
-        events#addFn `Rect (object
-            method call evt =
-                match evt#arg with
-                | `RectP 10 -> ()
-                | i -> ()
-        end)
-end
-
-class virtual obj2 = object
-    val virtual events : ([>`Paint], [>`PaintP of float]) event_store
-
-    initializer
-        events#addFn `Paint (object
-            method call evt =
-                match evt#arg with
-                | `PaintP 10. -> ()
-                | i -> ()
-        end)
-end
-
-class concrete1 = object
-    inherit obj1
-    inherit obj2
-
-    val events = create ()
-
-    initializer
-        events#addFn `Paint (object
-            method call evt =
-                match evt#arg with
-                | `PaintP 10. -> ()
-                | _ -> ()
-        end)
-end
-
-let c = new concrete1
+type ('a, 'b) handles_event = <
+    events : ('a, 'b) event_store
+>
 
 let mk obj evt fn = object
     method attach =

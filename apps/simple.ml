@@ -1,11 +1,10 @@
-class simple app =
+class ['a, 'b] simple app =
     let label1 = new TextBox.textBoxWidget app in
 object(self)
-    inherit Widget.basicWidget app as super
+    inherit ['a, 'b] Widget.basicWidget app as super
 
     initializer
-        shouldClip <- false;
-        let cl (i : #Mixins.layoutable) = (i :> Mixins.layoutable) in
+        let cl (i : ('a, 'b) #Layoutable.layoutable) = (i :> ('a, 'b) Layoutable.layoutable) in
         let widget1 = new Widget.basicWidget app in
         let widget2 = new Widget.basicWidget app in
         let widget3 = new Widget.basicWidget app in
@@ -18,31 +17,31 @@ object(self)
         let open ConstraintLayout in
         let open ConstraintLayout.Constraint in
         let rules = [
-            {item=lbl;
-             loc={top=wTop 10.; left=wLeft 10.; right=wRight ~-.10.; bottom=PreferredH lbl}};
-            {item=lWidget1;
-             loc={
+            {input_item=lbl;
+             input_loc={top=wTop 10.; left=wLeft 10.; right=wRight ~-.10.; bottom=preferredH lbl}};
+            {input_item=lWidget1;
+             input_loc={
                  top=bottomOf lbl 10.;
                  left=wLeft 10.;
                  right=leftOf lWidget2 ~-.10.;
                  bottom=Mul [WBottom; Const 0.3];
             }};
-            {item=lWidget2;
-             loc={
+            {input_item=lWidget2;
+             input_loc={
                  top=bottomOf lbl 10.;
                  left=Mul [WRight; Const 0.3];
                  right=wRight ~-.10.;
                  bottom=Mul [WBottom; Const 0.6];
             }};
-            {item=lWidget3;
-             loc={
+            {input_item=lWidget3;
+             input_loc={
                  top=bottomOf lWidget1 10.;
                  left=wLeft 10.;
                  right=rightOf lWidget1 0.;
                  bottom=wBottom ~-.10.
             }};
-            {item=lWidget4;
-             loc={
+            {input_item=lWidget4;
+             input_loc={
                  top=bottomOf lWidget2 10.;
                  left=leftOf lWidget2 0.;
                  right=wRight ~-.10.;
@@ -54,7 +53,7 @@ object(self)
         widget2#style#setBGColor Color.yellow;
         widget3#style#setBGColor Color.green;
         widget4#style#setBGColor Color.blue;
-        self#setLayout (layout :> Mixins.layout)
+        self#setLayout (layout :> ('a, 'b) Layout.layout)
 
-    inherit Mixins.focusManager app [(label1 :> Mixins.handlesEvent)]
+    inherit ['a, 'b] Focusable.focusManager app [(label1 :> ('a, 'b) HandlesEvent.handles_event)]
 end

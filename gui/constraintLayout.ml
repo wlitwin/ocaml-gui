@@ -1,4 +1,7 @@
-type item = (Widget.input, Widget.output) Layoutable.layoutable
+type item = <
+    preferredSize : Size.t;
+    resize : Rect.t -> unit;
+>
 
 type dep_field = DLeft
                | DRight
@@ -22,9 +25,6 @@ module Constraint = struct
            | IBottom of item
            | ILeft of item
            | IRight of item
-           (* Preferred *)
-           | PreferredW of item
-           | PreferredH of item
            (* Combinations *)
            | Add of t list
            | Sub of t list
@@ -47,8 +47,6 @@ module Constraint = struct
         | Max lst
         | Min lst -> List.map lst gather_dependencies |> List.concat
         | FunDep (lst, _) -> lst
-        | PreferredW item -> [(item, DLeft)]
-        | PreferredH item -> [(item, DTop)]
         | WTop
         | WLeft
         | WRight
@@ -59,15 +57,27 @@ module Constraint = struct
     (* Lots of common helper methods *) 
     let relative t amt = Add [t; Const amt]
 
+    let preferredW item = 
+        let key = (item :> item), DLeft in
+        FunDep ([key], fun tbl -> 
+            PolyHash.find_exn tbl key +. (item :> item)#preferredSize.w
+    )
+
+    let preferredH item = 
+        let key = (item :> item), DTop in
+        FunDep ([key], fun tbl -> 
+            PolyHash.find_exn tbl key +. (item :> item)#preferredSize.h
+    )
+
     let wTop = relative WTop
     let wLeft = relative WLeft
     let wRight = relative WRight
     let wBottom = relative WBottom
 
-    let topOf item = relative (ITop item)
-    let leftOf item = relative (ILeft item)
-    let rightOf item = relative (IRight item)
-    let bottomOf item = relative (IBottom item)
+    let topOf item = relative (ITop (item :> item))
+    let leftOf item = relative (ILeft (item :> item))
+    let rightOf item = relative (IRight (item :> item))
+    let bottomOf item = relative (IBottom (item :> item))
 end
 
 module Bounds = struct
@@ -78,6 +88,11 @@ module Bounds = struct
         bottom : Constraint.t;
     }
 end
+
+type ('a, 'b) constraint_inputs = {
+    input_item : ('a, 'b) Layoutable.layoutable;
+    input_loc : Bounds.t;
+}
 
 type item_constraints = {
     item : item;
@@ -172,8 +187,6 @@ let rec calc_loc (screen : Rect.t) field_tbl loc =
     | IRight item -> lookup (item, DRight)
     | IBottom item -> lookup (item, DBottom)
     (* Hacky - dynamically recalculate the size *)
-    | PreferredW item -> lookup (item, DLeft) +. item#preferredSize.Size.w
-    | PreferredH item -> lookup (item, DTop) +. item#preferredSize.Size.h
     | Max lst -> app ~init:Float.min_value ~f:Float.max lst
     | Min lst -> app ~init:Float.max_value ~f:Float.min lst
     | Add lst -> app ~init:0. ~f:Float.add lst
@@ -208,11 +221,14 @@ let layout rect deps =
     PolyHash.iter_keys deps.constraints (set_rectangle field_tbl)
 ;;
 
-class constraintLayout rules =
-    let deps = DependencyGraph.calculate_dependency_graph rules in
-    let items = List.map rules (fun r -> r.item) |> DynArray.of_list in
+class ['a, 'b] constraintLayout (rules : ('a, 'b) constraint_inputs list) =
+    let simple_items = List.map rules (fun x -> 
+        { item = (x.input_item :> item); loc = x.input_loc }
+    ) in
+    let deps = DependencyGraph.calculate_dependency_graph simple_items in
+    let items = List.map rules (fun r -> r.input_item) |> DynArray.of_list in
 object(self)
-    inherit [Widget.input, Widget.output] Layout.layout as super
+    inherit ['a, 'b] Layout.layout as super
 
     val events = HandlesEvent.create()
     

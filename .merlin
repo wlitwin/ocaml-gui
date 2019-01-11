@@ -11,6 +11,7 @@ B _build/backends/sigs/
 B _build/backends/gtk/
 B _build/backends/canvas/
 B _build/src/
+B _build/apps/
 B _build/gui/
 B _build/gui/layout/
 

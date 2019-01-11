@@ -9,13 +9,14 @@ object(self)
     method onKeyUp (key : Keys.key) = ()
 
     initializer
-        let fn = function
-            | `KeyDownArg key -> self#onKeyDown key
-            | `KeyUpArg key -> self#onKeyUp key
-            | _ -> ()
-        in
-        events#addFn `KeyUp (object
-            method call evt = fn evt#arg
-        end)
+        let fn = object 
+            method call evt =
+                match evt#arg with
+                | `KeyDownArg key -> self#onKeyDown key
+                | `KeyUpArg key -> self#onKeyUp key
+                | _ -> ()
+        end in
+        events#addFn `KeyUp fn;
+        events#addFn `KeyDown fn;
 end
 

@@ -3,8 +3,8 @@ module Graphics = Platform.Windowing.Graphics
 module Cached = struct
 end
 
-class textBoxWidget app = object(self)
-    inherit Widget.basicWidget app as super
+class ['a, 'b] textBoxWidget app = object(self)
+    inherit ['a, 'b] Widget.basicWidget app as super
 
     val mutable text : string = ""
     val mutable cursorLoc = 0
@@ -133,4 +133,5 @@ class textBoxWidget app = object(self)
         style#borderStyle#setStyle Rectangle;
         style#borderStyle#setSize 2.0;
         style#borderStyle#setColor Color.black;
+        self#setText ""
 end

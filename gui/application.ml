@@ -5,10 +5,10 @@ type special_keys_state = {
     mutable superDown : bool;
 }
 
-class application window ?(title="Window") size = 
+class ['a, 'b] application window ?(title="Window") size = 
 object(self)
     val mutable viewport : Size.t = size
-    val mutable widget : Widget.basicWidget option = None
+    val mutable widget : ('a, 'b) Widget.basicWidget option = None
     val mutable title : string = title
     val special_keys : special_keys_state = {
         ctrlDown=false;
@@ -30,7 +30,7 @@ object(self)
     method widget = Option.value_exn widget
     method setWidget w = widget <- Some w
 
-    method redrawWidget (widget : Widget.basicWidget) : unit =
+    method redrawWidget (widget : ('a, 'b) Widget.basicWidget) : unit =
         self#redraw
 
     method redraw =
