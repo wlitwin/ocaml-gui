@@ -1,11 +1,10 @@
 module Graphics = Platform.Windowing.Graphics
-(*
 
 type scrollBarType = VerticalScroller
                    | HorizontalScroller
 
-class scrollBar app scrollType = object(self)
-    inherit Widget.basicWidget app as super
+class ['a, 'b] scrollBar app scrollType = object(self)
+    inherit ['a, 'b] Widget.basicWidget app as super
 
     val mutable pos = 0.
     val barSize = 10.
@@ -56,11 +55,11 @@ class scrollBar app scrollType = object(self)
         | HorizontalScroller -> self#paintHorizontal cr
 end
 
-class scrollArea app cont =
+class ['a, 'b] scrollArea app cont =
 object(self)
-    inherit Widget.basicWidget app as super
+    inherit ['a, 'b] Widget.basicWidget app as super
 
-    val mutable cont : Widget.basicWidget = cont
+    val mutable cont : ('a, 'b) Widget.basicWidget = cont
     val mutable horiz = true
     val mutable vert = true
     val vertScroller = new scrollBar app VerticalScroller
@@ -146,4 +145,3 @@ object(self)
         vertScroller#onDraw cr;
         horzScroller#onDraw cr;
 end
-*)

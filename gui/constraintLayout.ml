@@ -78,6 +78,16 @@ module Constraint = struct
     let leftOf item = relative (ILeft (item :> item))
     let rightOf item = relative (IRight (item :> item))
     let bottomOf item = relative (IBottom (item :> item))
+
+    let centerTop toCenter ref = 
+        let ref = (ref :> item) in
+        FunDep ([(ref, DTop); (ref, DBottom)], fun fields ->
+            let lookup f = Hashtbl.Poly.find_exn fields f in
+            let top = lookup (ref, DTop)
+            and bot = lookup (ref, DBottom) in
+            let prefH = toCenter#preferredSize.Size.h in
+            top +. ((bot -. top) -. prefH)*.0.5
+    )
 end
 
 module Bounds = struct

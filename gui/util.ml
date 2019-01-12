@@ -9,7 +9,7 @@ let timeit name f =
     let start = Unix.gettimeofday() in
     let res = f() in
     let end_ = Unix.gettimeofday() in
-    Caml.print_endline Printf.(sprintf "%s time: %fms\n" name ((end_ -. start) *. 1000.));
+    (*Caml.print_endline Printf.(sprintf "%s time: %fms\n" name ((end_ -. start) *. 1000.));*)
     res
 ;;
 

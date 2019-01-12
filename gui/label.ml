@@ -1,9 +1,9 @@
 open Widget
 
-class label ?(text="") app = 
+class ['a, 'b] label ?(text="") app = 
     let start_text = text in
 object(self)
-    inherit TextBox.textBoxWidget app as super
+    inherit ['a, 'b] TextBox.textBoxWidget app as super
 
     method! onKeyDown _ = 
         ()

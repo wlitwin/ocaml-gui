@@ -21,6 +21,7 @@ class ['a, 'b] textBoxWidget app = object(self)
         let ctx = app#graphicsContext in
         measuredCached <- Graphics.measure_text ctx style#fontInfo text;
         defaultCached <- Graphics.measure_text ctx style#fontInfo "default_size";
+        events#handle HandlesEvent.(mkEvent `TextChanged (`TextChangedP text));
 
     method showCursor = showCursor
     method setShowCursor b = showCursor <- b

@@ -47,7 +47,7 @@ let create () = object(self)
     method handle (evt : ('a, 'b) event) : unit =
         List.iter any_list (fun obj -> obj#call evt);
         match HP.find table evt#event with
-        | None -> Stdio.printf "NONE\n";
+        | None -> ()
         | Some lst -> List.iter lst (fun obj ->
             obj#call evt
         )

@@ -67,7 +67,7 @@ class ['a, 'b] basicWidget app = object(self)
     method shouldClip = shouldClip
     method setShouldClip b = shouldClip <- b
 
-    method setLayout l =
+    method setLayout (l : ('a, 'b) #Layout.layout) =
         layout <- Some l
 
     method invalidate : unit =
