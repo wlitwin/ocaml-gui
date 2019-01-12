@@ -136,7 +136,6 @@ object(self)
         cont#preferredSize
 
     method! paint cr =
-        (* Create a cairo surface *)
         let ox = self#offsetX
         and oy = self#offsetY in
         Graphics.translate cr (rect.x -. ox) (rect.y -. oy);

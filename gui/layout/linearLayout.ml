@@ -9,7 +9,6 @@ object(self)
     val mutable snoopers = []
     val mutable distributeEvenly = true
 
-    (*val events : ([>`Unit], [>`UnitArg]) HandlesEvent.handles*)
     val events = HandlesEvent.create()
 
     method clear = DynArray.clear items

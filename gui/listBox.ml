@@ -8,7 +8,6 @@ object(self)
     method setContents (lst : ('a, 'b) Layoutable.layoutable list) : unit =
         v_layout#clear;
         List.iter lst v_layout#addLayoutable;
-        self#invalidate;
 
     initializer
         v_layout#setDistributeEvenly false;

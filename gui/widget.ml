@@ -1,46 +1,5 @@
 module Graphics = Platform.Windowing.Graphics
 
-(*
-let z = object
-    method drawList = [
-        `Rectangle Color.black;
-        `Text "Hello";
-    ]
-end
-
-(* OR have a composite step 
- *
- * So that widgets draw to an internal buffer
- * then a compositor takes over the rest *)
-
-(*type 'a layout = 'a constraint 'a = Mixins.layout*)
-
-type input =
-    [ `Click
-    | `Any
-    | `Enter
-    | `Focused
-    | `KeyDown
-    | `KeyUp
-    | `Leave
-    | `Move
-    | `Paint
-    | `Resize
-    | `Unfocused ]
-
-type output =
-    [ `ClickArg of HandlesMouse.mouse_button * Pos.t
-    | `EnterArg of Pos.t
-    | `FocusedArg
-    | `KeyDownArg of Keys.key
-    | `KeyUpArg of Keys.key
-    | `LeaveArg of Pos.t
-    | `MoveArg of Pos.t
-    | `PaintArg of Drawable.PWG.context
-    | `ResizeArg of Rect.t
-    | `UnfocusedArg ]
-    *)
-
 class ['a, 'b] basicWidget app = object(self)
     val id = 0
     val style = new Style.style
@@ -71,7 +30,7 @@ class ['a, 'b] basicWidget app = object(self)
         layout <- Some l
 
     method invalidate : unit =
-        app#redrawWidget (self :> ('a, 'b) basicWidget)
+        app#redrawWidget (self :> ('a, 'b) HandlesEvent.handles_event)
 
     method contentSize = 
         match layout with

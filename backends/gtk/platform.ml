@@ -8,6 +8,16 @@ module CairoGraphics = struct
         let open Color in
         Cairo.set_source_rgba cr color.r color.g color.b color.a
 
+    type image = {
+        size : Size.t;
+        image : Cairo.Surface.t;
+    }
+
+    let create_image w h =
+        let module CI = Cairo.Image in
+        { image = CI.create CI.ARGB32 w h;
+          size = Size.(Float.{w=of_int w; h=of_int h}) }
+
     let set_width = Cairo.set_line_width
     let move_to cr x y = Cairo.move_to cr x y
     let line_to cr x y = Cairo.line_to cr x y
@@ -87,6 +97,7 @@ module Windowing : PlatformSig.WindowingSig = struct
     type context = {
         window : GWindow.window;
         special_keys : special_keys_state;
+        mutable backing_image : Graphics.image;
     }
 
     let normalize_key context (key : int) =
@@ -117,7 +128,8 @@ module Windowing : PlatformSig.WindowingSig = struct
                 shiftDown=false;
                 altDown=false;
                 superDown=false;
-            }
+            };
+            backing_image=Graphics.create_image 100 100
         }
     ;;
 
@@ -140,8 +152,12 @@ module Windowing : PlatformSig.WindowingSig = struct
         (*Stdio.printf "SCREEN WIDTH %d\n" (Gdk.Screen.width ());*)
         (*gtk_window#set_resize_mode `IMMEDIATE;*)
         ignore(gtk_window#event#connect#expose (fun event -> 
-                let cr = Cairo_gtk.create gtk_window#misc#window in
+                let img = context.backing_image.image in
+                let cr = Cairo.create img in
                 draw cr;
+                let cr = Cairo_gtk.create gtk_window#misc#window in
+                Cairo.set_source_surface cr img ~x:0. ~y:0.;
+                Cairo.paint cr;
                 true
             );
         );
@@ -156,9 +172,12 @@ module Windowing : PlatformSig.WindowingSig = struct
             true));
         ignore(gtk_window#event#connect#configure (fun evt -> 
                 let module GC = GdkEvent.Configure in
+                let w = GC.width evt
+                and h = GC.height evt in
+                context.backing_image <- Graphics.create_image w h;
                 resize Size.{
-                    w=Float.of_int (GC.width evt); 
-                    h=Float.of_int (GC.height evt)};
+                    w=Float.of_int w; 
+                    h=Float.of_int h};
                 false
             )
         );

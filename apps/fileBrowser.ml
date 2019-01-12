@@ -1,8 +1,8 @@
 let strs = [|
-    "Hello";
-    "World";
-    "Cool";
-    "Awesome";
+    "1";
+    "2";
+    "3";
+    "4";
 |]
 
 let build_str () =
@@ -44,7 +44,6 @@ object(self)
     method private updatePath =
         let lbls = readDir app txtPath#text in
         fileList#setContents (List.map lbls (fun i -> 
-            i#setShouldClip false;
             (i :> ('a, 'b) Layoutable.layoutable)));
         scroll#resize scroll#fullRect
 

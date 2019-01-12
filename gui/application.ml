@@ -30,10 +30,14 @@ object(self)
     method widget = Option.value_exn widget
     method setWidget w = widget <- Some w
 
-    method redrawWidget (widget : ('a, 'b) Widget.basicWidget) : unit =
-        self#redraw
+    val mutable draw_list = []
+
+    method redrawWidget (widget : ('a, 'b) HandlesEvent.handles_event) : unit =
+        draw_list <- widget :: draw_list;
+        Platform.Windowing.request_redraw window
 
     method redraw =
+        draw_list <- [];
         Platform.Windowing.request_redraw window
 
     method resize (size : Size.t) =
@@ -63,7 +67,15 @@ object(self)
     method private draw (cr : Platform.Windowing.Graphics.context) =
         Util.timeit "draw" (fun _ ->
             try
-                Drawable.(self#widget#events#handle HandlesEvent.(mkEvent `Paint (`PaintArg cr)))
+                let event = HandlesEvent.(mkEvent `Paint (`PaintArg cr)) in
+                begin match draw_list with
+                | [] -> Drawable.(self#widget#events#handle event)
+                | lst -> 
+                        List.iter lst (fun w -> 
+                            Stdio.printf "  drawing widget\n%!";
+                            w#events#handle event)
+                end;
+                draw_list <- []
             with e ->
                 (*Stdio.print_endline "==================== EXCEPTION OCCURRED ==================";
                 Stdio.print_endline (Exn.to_string e);

@@ -47,13 +47,10 @@ object(self)
         let old_widget = self#focused in
         focus_fn();
         let new_widget = self#focused in
-        old_widget#events#handle focusedEvent;
-        new_widget#events#handle unfocusedEvent;
-        app#redraw
-        (*
+        old_widget#events#handle unfocusedEvent;
+        new_widget#events#handle focusedEvent;
         app#redrawWidget new_widget;
         app#redrawWidget old_widget;
-        *)
 
     method private sendToAll evt =
         Array.iter children (fun ch -> ch#events#handle evt)
