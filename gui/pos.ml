@@ -8,6 +8,11 @@ let zero = {
     y = 0.;
 }
 
+let add a b = {
+    x = a.x +. b.x;
+    y = a.y +. b.y;
+}
+
 let sub a b = {
     x = b.x -. a.x;
     y = b.y -. a.y;

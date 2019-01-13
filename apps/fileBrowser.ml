@@ -45,7 +45,7 @@ object(self)
         let lbls = readDir app txtPath#text in
         fileList#setContents (List.map lbls (fun i -> 
             (i :> ('a, 'b) Layoutable.layoutable)));
-        scroll#resize scroll#fullRect
+        scroll#resize scroll#fullRect;
 
     initializer
         self#setPath "/";

@@ -53,6 +53,16 @@ module CairoGraphics = struct
         }
     ;;
 
+    let set_font_info cr (font_info : Font.t) =
+        Cairo.select_font_face cr font_info.font ~weight:(font_weight_to_cairo font_info.weight);
+        Cairo.set_font_size cr font_info.size;
+    ;;
+
+    let draw_text_ cr (pos : Pos.t) text =
+        Cairo.move_to cr pos.x pos.y;
+        Cairo.show_text cr text;
+    ;;
+
     let draw_text cr (font_info : Font.t) (rect : Rect.t) text =
         let open Rect in
         let open Color in

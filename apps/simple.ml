@@ -1,3 +1,35 @@
+class ['a, 'b] tree_drawing app = 
+object
+    inherit ['a, 'b] Widget.basicWidget app as super
+
+    val mutable tree = Rendering.{
+        parent=None;
+        content=Group(0, [Rendering.fill_rect Rect.{x=10.;y=10.;w=10.;h=10.} Color.green]);
+        children=[]
+    }
+
+    method! onResize r =
+        (*super#resize r;*)
+        tree <- Rendering.{
+            parent=None;
+            content=Group(0, [
+                Rendering.fill_rect r Color.green
+            ]);
+            children=[{
+                parent=None;    
+                content=Group(1, [
+                    Rendering.fill_text "Hello World!" Font.default_font Color.black Pos.{x=r.x; y=r.y+.20.} 
+                ]);
+                children=[];
+            }];
+        }
+
+    method! onDraw cr =
+       tree
+       |> Rendering.sort_tree
+       |> Rendering.draw_tree cr
+end
+
 class ['a, 'b] simple app =
     let label1 = new TextBox.textBoxWidget app in
 object(self)
@@ -7,7 +39,7 @@ object(self)
         let cl (i : ('a, 'b) #Layoutable.layoutable) = (i :> ('a, 'b) Layoutable.layoutable) in
         let widget1 = new Widget.basicWidget app in
         let widget2 = new Widget.basicWidget app in
-        let widget3 = new Widget.basicWidget app in
+        let widget3 = (*new Widget.basicWidget app in*) new tree_drawing app in
         let widget4 = new Widget.basicWidget app in
         let lWidget1 = cl widget1 in
         let lWidget2 = cl widget2 in
