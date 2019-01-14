@@ -20,6 +20,7 @@ type primitive = {
 
 type content = Translate of Pos.t
              | Group of (int * primitive list) list
+             | AddZ of int
 
 type node = {
     parent : node option;
@@ -138,8 +139,9 @@ let sort_tree root =
             List.iter groups (fun (idx, prims) -> 
                 let z_index = z_index + idx in
                 add_prims_by_z (z_index, pos, prims);
-                List.iter node#children (traverse (z_index, pos)) 
-            )
+            );
+            List.iter node#children (traverse (z_index, pos)) 
+        | AddZ amt -> List.iter node#children (traverse (z_index+amt, pos))
     in
     traverse (0, Pos.zero) root;
     let keys = 
@@ -157,10 +159,11 @@ let sort_tree root =
 module Graphics = Platform.Windowing.Graphics
 
 let draw_tree cr tree =
-    Stdio.printf "RENDER LIST IS %d IN LENGTH\n" (List.length tree);
+    (*Stdio.printf "RENDER LIST IS %d IN LENGTH\n" (List.length tree);*)
     List.iter tree (function
         | TextList {draw_type=Stroke} -> failwith "Unsupported stroke text"
         | TextList {draw_type=Fill; font; color; text} ->
+            (*Stdio.printf "TEXT LIST %d\n" (List.length text);*)
             Graphics.set_color cr color;
             Graphics.set_font_info cr font;
             List.iter text (fun (pos, text) ->
@@ -168,12 +171,14 @@ let draw_tree cr tree =
                 (*Graphics.draw_text cr font Rect.{x=pos.x; y=pos.y; w=0.; h=0.} text*)
             )
         | RectangleList {draw_type=Fill; color; rects} ->
+            (*Stdio.printf "RECT LIST (F) %d\n" (List.length rects);*)
             Graphics.set_color cr color;
             List.iter rects (fun r ->
                 Graphics.rectangle cr r;
                 Graphics.fill cr;
             )
         | RectangleList {draw_type=Stroke; color; rects} ->
+            (*Stdio.printf "RECT LIST (S) %d\n" (List.length rects);*)
             Graphics.set_color cr color;
             List.iter rects (fun r ->
                 Graphics.rectangle cr r;
@@ -183,15 +188,25 @@ let draw_tree cr tree =
 ;;
 
 let print_tree tree =
-    let rec print node =
-        Stdio.printf "NODE with children %d\n" (List.length node#children);
-        List.iter node#children print
+    let rec print idnt node =
+        let pad = String.make idnt ' ' in
+        begin match node#content with
+        | Group lst -> 
+            let items = List.fold lst ~init:0 ~f:(fun acc (_, lst) ->
+                List.length lst + acc
+            ) in
+            Stdio.printf "%sGROUP [%d items]" pad items
+        | Translate _ -> Stdio.printf "%sTranslate" pad
+        | AddZ amt -> Stdio.printf "%sAddZ %d" pad amt
+        end;
+        Stdio.printf " -- with children %d\n" (List.length node#children);
+        List.iter node#children (print (idnt+2))
     in
-    print tree;
-    tree
+    print 0 tree;
 ;;
 
 let draw cr tree =
+(*    print_tree tree;*)
     let tree = Util.timeit "Sort time" (fun _ ->
         sort_tree tree
     ) in
