@@ -57,8 +57,12 @@ object(self)
         | _ -> ()
 
     method private keyDown key =
-        self#checkSuperKeys key true;
-        HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyDown (`KeyDownArg key)))
+        (match key with
+        | Keys.Enter -> self#redraw
+        | _ -> 
+            self#checkSuperKeys key true;
+            HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyDown (`KeyDownArg key)))
+        );
 
     method private keyUp key =
         self#checkSuperKeys key false;
@@ -72,7 +76,6 @@ object(self)
                 | [] -> Drawable.(self#widget#events#handle event)
                 | lst -> 
                         List.iter lst (fun w -> 
-                            Stdio.printf "  drawing widget\n%!";
                             w#events#handle event)
                 end;
                 draw_list <- []

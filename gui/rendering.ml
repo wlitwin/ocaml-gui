@@ -19,7 +19,7 @@ type primitive = {
 }
 
 type content = Translate of Pos.t
-             | Group of int * primitive list
+             | Group of (int * primitive list) list
 
 type node = {
     parent : node option;
@@ -27,13 +27,35 @@ type node = {
     children : node list;
 }
 
+class nodeObject = object(self)
+    val mutable content = Group [0, []]
+    val mutable children : nodeObject list = []
+
+    method content = content
+    method setContent c = content <- c
+    method children = children
+
+    method attach obj =
+        self#detach obj;
+        children <- obj :: children
+
+    method detach obj =
+        children <- List.filter children (fun o -> Poly.(obj <> o))
+end
+
+let mk_rect (rect, color, draw_type : Rect.t * Color.t * draw_type) = {
+    pos = Pos.{x=rect.x; y=rect.y};
+    draw_type;
+    shape_type = Rectangle Size.{w=rect.w; h=rect.h};
+    color;
+}
+
 let fill_rect (rect : Rect.t) color =
-    {
-        pos = Pos.{x=rect.x; y=rect.y};
-        draw_type = Fill;
-        shape_type = Rectangle Size.{w=rect.w; h=rect.h};
-        color;
-    }
+    mk_rect(rect, color, Fill)
+;;
+
+let stroke_rect (rect : Rect.t) color =
+    mk_rect(rect, color, Stroke)
 ;;
 
 let fill_text text font color pos =
@@ -110,12 +132,14 @@ let sort_tree root =
         )
     in
     let rec traverse (z_index, pos : int * Pos.t) node =
-        match node.content with
-        | Translate amt -> List.iter node.children (traverse (z_index, Pos.add pos amt))
-        | Group (idx, prims) -> 
+        match node#content with
+        | Translate amt -> List.iter node#children (traverse (z_index, Pos.add pos amt))
+        | Group groups ->
+            List.iter groups (fun (idx, prims) -> 
                 let z_index = z_index + idx in
                 add_prims_by_z (z_index, pos, prims);
-                List.iter node.children (traverse (z_index, pos)) 
+                List.iter node#children (traverse (z_index, pos)) 
+            )
     in
     traverse (0, Pos.zero) root;
     let keys = 
@@ -140,6 +164,7 @@ let draw_tree cr tree =
             Graphics.set_font_info cr font;
             List.iter text (fun (pos, text) ->
                 Graphics.draw_text_ cr pos text
+                (*Graphics.draw_text cr font Rect.{x=pos.x; y=pos.y; w=0.; h=0.} text*)
             )
         | RectangleList {draw_type=Fill; color; rects} ->
             Graphics.set_color cr color;
@@ -156,6 +181,12 @@ let draw_tree cr tree =
     )
 ;;
 
+let draw cr tree =
+    tree
+    |> sort_tree
+    |> draw_tree cr
+;;
+
 let v = 
     let r1 = fill_rect Rect.{x=0.; y=0.; w=100.; h=100.} Color.red in
     let t1 = fill_text "Hello" Font.default_font Color.black Pos.{x=10.; y=10.} in
@@ -170,23 +201,10 @@ let v =
         in
         loop count []
     in
-    let n = {
-        parent=None;
-        content=Group (0, r1 :: mk 100);
-        children=[
-        {
-            parent=None;
-            content=Group (0, mk 200);
-            children=[];
-        };
-        {
-            parent=None;
-            content=Group (0, mk 400);
-            children=[];
-        }
-        ];
-    } in
+    ()
+    (*
     Util.timeit "Tree sort" (fun _ ->
         sort_tree n
     )
+    *)
 ;;

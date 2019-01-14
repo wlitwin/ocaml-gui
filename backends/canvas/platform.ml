@@ -79,6 +79,13 @@ module CanvasGraphics = struct
         }
     ;;
 
+    let set_font_info cr font_info =
+        setup_font_info cr font_info
+
+    let draw_text_ context (pos : Pos.t) text =
+        context.canvas##fillText (Js.string text) pos.x pos.y;
+    ;;
+
     let draw_text context font_info (rect : Rect.t) text =
         save context;
         setup_font_info context font_info;

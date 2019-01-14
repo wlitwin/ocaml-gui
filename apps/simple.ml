@@ -1,33 +1,37 @@
+let _ = Random.init 102493
+
 class ['a, 'b] tree_drawing app = 
 object
     inherit ['a, 'b] Widget.basicWidget app as super
 
-    val mutable tree = Rendering.{
-        parent=None;
-        content=Group(0, [Rendering.fill_rect Rect.{x=10.;y=10.;w=10.;h=10.} Color.green]);
-        children=[]
-    }
+    val renderNode = new Rendering.nodeObject
 
     method! onResize r =
-        (*super#resize r;*)
-        tree <- Rendering.{
-            parent=None;
-            content=Group(0, [
-                Rendering.fill_rect r Color.green
-            ]);
-            children=[{
-                parent=None;    
-                content=Group(1, [
-                    Rendering.fill_text "Hello World!" Font.default_font Color.black Pos.{x=r.x; y=r.y+.20.} 
+        let mk_text cnt =
+            let s = [|"H"; "e"; "l"; "l"; "o"; " "; "W"; "o"; "r"; "l"; "d"; "!"|] in
+            let rec loop cnt acc =
+                if cnt < 0 then acc
+                else (
+                    let rx = Random.float (r.w*.0.85) in
+                    let ry = Random.float (r.h*.0.85) in
+                    let str = s.(Random.int 12) ^ s.(Random.int 12) ^ s.(Random.int 12) ^ s.(Random.int 12) in
+                    loop (cnt-1) (Rendering.fill_text str Font.default_font Color.black Pos.{x=r.x+.rx; y=r.y+.ry} :: acc)
+                )
+            in
+            loop cnt []
+        in
+        renderNode#setContent (Group [
+            (0, [Rendering.fill_rect r Color.green;
+                 Rendering.stroke_rect r Color.black; 
                 ]);
-                children=[];
-            }];
-        }
+            (1, [Rendering.fill_text "Hello World!" Font.default_font Color.black Pos.{x=r.x; y=r.y+.20.};
+                 Rendering.fill_rect Rect.{x=r.x; y=r.y+.r.h*.0.5; w=r.w; h=r.h*.0.5} Color.orange] @ mk_text 1000);
+        ])
 
     method! onDraw cr =
-       tree
-       |> Rendering.sort_tree
-       |> Rendering.draw_tree cr
+       Util.timeit "Tree sort+draw" (fun _ ->
+           Rendering.draw cr renderNode
+       );
 end
 
 class ['a, 'b] simple app =
