@@ -256,4 +256,9 @@ object(self)
 
     method layout rect =
         layout rect deps
+
+    initializer
+        DynArray.iter (fun item ->
+            self#renderObject#attach item#renderObject
+        ) items
 end

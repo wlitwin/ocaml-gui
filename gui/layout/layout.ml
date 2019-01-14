@@ -13,20 +13,10 @@ object(self)
     method virtual items : ('a, 'b) Layoutable.layoutable DynArray.t
 
     method! onResize r =
-        let res = super#onResize r in
+        super#onResize r;
         self#layout r;
-        res 
-
-    initializer
-        let open Drawable in
-        let fn evt = 
-            match evt#arg with
-            | `PaintArg cr ->
-                DynArray.iter (fun item ->
-                    item#events#handle evt
-                ) self#items
-            | _ -> ()
-        in
-        events#addFn `Paint (object method call = fn end)
+        DynArray.iter (fun item ->
+            item#onDraw
+        ) self#items
 end
 

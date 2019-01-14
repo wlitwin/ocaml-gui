@@ -13,7 +13,6 @@ class ['a, 'b] basicWidget app = object(self)
     val rev_table = Hashtbl.Poly.create()
 
     inherit Stylable.styleable
-    inherit Drawable.drawable
     inherit ['a, 'b] Layoutable.layoutable
     inherit HandlesMouse.handlesMouse
     inherit HandlesKeyboard.handlesKeyboard
@@ -27,7 +26,8 @@ class ['a, 'b] basicWidget app = object(self)
     method setShouldClip b = shouldClip <- b
 
     method setLayout (l : ('a, 'b) #Layout.layout) =
-        layout <- Some l
+        layout <- Some l;
+        self#renderObject#attach l#renderObject;
 
     method invalidate : unit =
         app#redrawWidget (self :> ('a, 'b) HandlesEvent.handles_event)
@@ -46,10 +46,6 @@ class ['a, 'b] basicWidget app = object(self)
     method private sendEventToLayout event =
         Option.iter layout (fun l -> l#events#handle event)
 
-    method paint cr =
-        let open Drawable in
-        self#sendEventToLayout HandlesEvent.(mkEvent `Paint (`PaintArg cr))
-
     (* TODO - move this into mixins
      *)
     method onResize r =
@@ -60,8 +56,15 @@ class ['a, 'b] basicWidget app = object(self)
     method preferredSize =
         style#borderStyle#outsetSizeByBorder self#contentSize
 
-    method onDraw cr =
-        Graphics.save cr;
+    method onDraw =
+        let open Rendering in
+        let g = Group [
+            (0, [fill_rect self#fullRect style#bgColor]);
+            (1, self#renderObjects)
+        ]
+        in
+        renderObject#setContent g
+        (*Graphics.save cr;
         self#clipDrawArea cr;
         let fullRect = self#fullRect in
         style#fillBgColor cr fullRect;
@@ -69,6 +72,7 @@ class ['a, 'b] basicWidget app = object(self)
         Graphics.move_to cr rect.x rect.y;
         self#paint cr;
         Graphics.restore cr;
+        *)
 
     initializer
         rect <- Rect.{x=0.; y=0.; w=10.; h=10.}

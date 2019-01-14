@@ -2,16 +2,10 @@ module PWG = Platform.Windowing.Graphics
 
 class virtual drawable =
 object(self)
-    val virtual events : ([>`Paint], [>`PaintArg of PWG.context]) HandlesEvent.event_store
+    val renderObject = new Rendering.nodeObject
 
-    method virtual onDraw : Platform.Windowing.Graphics.context -> unit 
+    method renderObjects : Rendering.primitive list = []
+    method renderObject = renderObject
 
-    initializer
-        let fn = function
-            | `PaintArg cr -> self#onDraw cr
-            | _ -> ()
-        in
-        events#addFn `Paint (object
-            method call evt = fn evt#arg
-        end)
+    method onDraw = ()
 end

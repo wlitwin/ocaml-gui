@@ -125,10 +125,12 @@ class ['a, 'b] textBoxWidget app = object(self)
             Graphics.restore cr;
         end
 
+        (*
     method! paint cr =
         self#drawText cr;
         if isFocused then
             self#drawCursor cr
+            *)
 
     initializer
         style#setBGColor Color.white;

@@ -40,7 +40,7 @@ class nodeObject = object(self)
         children <- obj :: children
 
     method detach obj =
-        children <- List.filter children (fun o -> Poly.(obj <> o))
+        children <- List.filter children (fun o -> not (phys_equal obj o))
 end
 
 let mk_rect (rect, color, draw_type : Rect.t * Color.t * draw_type) = {
@@ -157,6 +157,7 @@ let sort_tree root =
 module Graphics = Platform.Windowing.Graphics
 
 let draw_tree cr tree =
+    Stdio.printf "RENDER LIST IS %d IN LENGTH\n" (List.length tree);
     List.iter tree (function
         | TextList {draw_type=Stroke} -> failwith "Unsupported stroke text"
         | TextList {draw_type=Fill; font; color; text} ->
@@ -181,30 +182,19 @@ let draw_tree cr tree =
     )
 ;;
 
+let print_tree tree =
+    let rec print node =
+        Stdio.printf "NODE with children %d\n" (List.length node#children);
+        List.iter node#children print
+    in
+    print tree;
+    tree
+;;
+
 let draw cr tree =
     tree
+    (*|> print_tree*)
     |> sort_tree
     |> draw_tree cr
 ;;
 
-let v = 
-    let r1 = fill_rect Rect.{x=0.; y=0.; w=100.; h=100.} Color.red in
-    let t1 = fill_text "Hello" Font.default_font Color.black Pos.{x=10.; y=10.} in
-    let t2 = fill_text "OK" Font.default_font Color.black Pos.{x=10.; y=10.} in
-    let t3 = fill_text "AWESOME" Font.default_font Color.black Pos.{x=10.; y=10.} in
-    let t4 = fill_text "AMAZING" Font.default_font Color.black Pos.{x=10.; y=10.} in
-    let mk count =
-        let rec loop idx acc =
-            if idx > 0 then
-                loop (idx-1) (t1 :: acc)
-            else acc
-        in
-        loop count []
-    in
-    ()
-    (*
-    Util.timeit "Tree sort" (fun _ ->
-        sort_tree n
-    )
-    *)
-;;

@@ -1,5 +1,7 @@
 class virtual ['a, 'b] layoutable =
 object(self)
+    inherit Drawable.drawable
+
     val virtual events : ([>`Resize] as 'a, [>`ResizeArg of Rect.t] as 'b) HandlesEvent.event_store
 
     val virtual id : int

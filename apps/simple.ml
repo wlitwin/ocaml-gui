@@ -4,8 +4,6 @@ class ['a, 'b] tree_drawing app =
 object
     inherit ['a, 'b] Widget.basicWidget app as super
 
-    val renderNode = new Rendering.nodeObject
-
     method! onResize r =
         let mk_text cnt =
             let s = [|"H"; "e"; "l"; "l"; "o"; " "; "W"; "o"; "r"; "l"; "d"; "!"|] in
@@ -20,18 +18,21 @@ object
             in
             loop cnt []
         in
-        renderNode#setContent (Group [
-            (0, [Rendering.fill_rect r Color.green;
+        renderObject#setContent (Group [
+            (1, [Rendering.fill_rect r Color.green;
                  Rendering.stroke_rect r Color.black; 
                 ]);
-            (1, [Rendering.fill_text "Hello World!" Font.default_font Color.black Pos.{x=r.x; y=r.y+.20.};
+            (2, [Rendering.fill_text "Hello World!" Font.default_font Color.black Pos.{x=r.x; y=r.y+.20.};
                  Rendering.fill_rect Rect.{x=r.x; y=r.y+.r.h*.0.5; w=r.w; h=r.h*.0.5} Color.orange] @ mk_text 1000);
         ])
 
-    method! onDraw cr =
+    method! onDraw =
+        ()
+        (*
        Util.timeit "Tree sort+draw" (fun _ ->
            Rendering.draw cr renderNode
        );
+       *)
 end
 
 class ['a, 'b] simple app =

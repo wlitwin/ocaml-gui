@@ -71,6 +71,11 @@ object(self)
     method private draw (cr : Platform.Windowing.Graphics.context) =
         Util.timeit "draw" (fun _ ->
             try
+                self#widget#onDraw;
+                Util.timeit "sort tree + draw tree" (fun _ ->
+                    Rendering.draw cr self#widget#renderObject
+                )
+                (*
                 let event = HandlesEvent.(mkEvent `Paint (`PaintArg cr)) in
                 begin match draw_list with
                 | [] -> Drawable.(self#widget#events#handle event)
@@ -79,6 +84,7 @@ object(self)
                             w#events#handle event)
                 end;
                 draw_list <- []
+                *)
             with e ->
                 (*Stdio.print_endline "==================== EXCEPTION OCCURRED ==================";
                 Stdio.print_endline (Exn.to_string e);
