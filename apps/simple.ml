@@ -23,7 +23,7 @@ object
                  Rendering.stroke_rect r Color.black; 
                 ]);
             (2, [Rendering.fill_text "Hello World!" Font.default_font Color.black Pos.{x=r.x; y=r.y+.20.};
-                 Rendering.fill_rect Rect.{x=r.x; y=r.y+.r.h*.0.5; w=r.w; h=r.h*.0.5} Color.orange] @ mk_text 1000);
+                 Rendering.fill_rect Rect.{x=r.x; y=r.y+.r.h*.0.5; w=r.w; h=r.h*.0.5} Color.orange] @ mk_text 4000);
         ])
 
     method! onDraw =

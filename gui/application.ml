@@ -72,9 +72,7 @@ object(self)
         Util.timeit "draw" (fun _ ->
             try
                 self#widget#onDraw;
-                Util.timeit "sort tree + draw tree" (fun _ ->
-                    Rendering.draw cr self#widget#renderObject
-                )
+                Rendering.draw cr self#widget#renderObject
                 (*
                 let event = HandlesEvent.(mkEvent `Paint (`PaintArg cr)) in
                 begin match draw_list with

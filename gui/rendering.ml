@@ -192,9 +192,11 @@ let print_tree tree =
 ;;
 
 let draw cr tree =
-    tree
-    (*|> print_tree*)
-    |> sort_tree
-    |> draw_tree cr
+    let tree = Util.timeit "Sort time" (fun _ ->
+        sort_tree tree
+    ) in
+    Util.timeit "Draw time" (fun _ ->
+        draw_tree cr tree
+    )
 ;;
 
