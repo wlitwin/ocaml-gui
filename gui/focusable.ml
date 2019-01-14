@@ -49,11 +49,6 @@ object(self)
         let new_widget = self#focused in
         old_widget#events#handle unfocusedEvent;
         new_widget#events#handle focusedEvent;
-        app#redrawWidget new_widget;
-        app#redrawWidget old_widget;
-
-    method private sendToAll evt =
-        Array.iter children (fun ch -> ch#events#handle evt)
 
     method focused = children.(focused)
 
@@ -61,7 +56,6 @@ object(self)
         let fn evt = 
             match evt#arg with
             | `KeyDownArg Keys.Tab -> self#updateFocus Forward
-            | `PaintArg _ -> self#sendToAll evt
             | _ -> self#focused#events#handle evt
         in
         events#addFn `Any (object

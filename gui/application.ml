@@ -10,6 +10,7 @@ object(self)
     val mutable viewport : Size.t = size
     val mutable widget : ('a, 'b) Widget.basicWidget option = None
     val mutable title : string = title
+    val renderer = new Rendering.renderer
     val special_keys : special_keys_state = {
         ctrlDown=false;
         shiftDown=false;
@@ -28,25 +29,18 @@ object(self)
         Platform.Windowing.graphics_context window
 
     method widget = Option.value_exn widget
-    method setWidget w = widget <- Some w
-
-    val mutable draw_list = []
-
-    method redrawWidget (widget : ('a, 'b) HandlesEvent.handles_event) : unit =
-        draw_list <- widget :: draw_list;
-        Platform.Windowing.request_redraw window
-
-    method redraw =
-        draw_list <- [];
-        Platform.Windowing.request_redraw window
+    method setWidget w = 
+        widget <- Some w;
+        renderer#setRoot w#renderObject
 
     method resize (size : Size.t) =
          Util.timeit "resize" (fun _ ->
             let open Layoutable in
+            renderer#pause;
             self#widget#events#handle HandlesEvent.(mkEvent `Resize (`ResizeArg Rect.{x=0.;y=0.;w=size.w;h=size.h}));
-            ()
+            renderer#resume;
+            (*Platform.Windowing.request_redraw window*)
         );
-        self#redraw;
 
     method private checkSuperKeys key upDown =
         match key with
@@ -57,17 +51,18 @@ object(self)
         | _ -> ()
 
     method private keyDown key =
-        (match key with
-        | Keys.Enter -> self#redraw
-        | _ -> 
+        match key with
+        | Keys.Enter -> 
+            Platform.Windowing.request_redraw window
+        | _ ->
             self#checkSuperKeys key true;
             HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyDown (`KeyDownArg key)))
-        );
 
     method private keyUp key =
         self#checkSuperKeys key false;
         HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyUp (`KeyUpArg key)))
 
+        (*
     method private draw (cr : Platform.Windowing.Graphics.context) =
         Util.timeit "draw" (fun _ ->
             try
@@ -89,13 +84,19 @@ object(self)
                 Backtrace.get() |> Backtrace.to_string |> Stdio.printf "%s\n%!"*)
                 ()
         );
+        *)
+
+    initializer
+        renderer#setRequestDraw (fun _ ->
+            Platform.Windowing.request_redraw window
+        )
 
     method main =
         Platform.Windowing.init
         window
         ~title:"Window"
         ~size:size
-        ~draw:(fun cr -> self#draw cr)
+        ~draw:(fun cr -> renderer#render cr)
         ~resize:(fun sz -> self#resize sz)
         ~keyPress:(fun key -> self#keyDown key)
         ~keyRelease:(fun key -> self#keyUp key);

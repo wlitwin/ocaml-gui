@@ -22,7 +22,6 @@ class ['a, 'b] textBoxWidget app = object(self)
         measuredCached <- Graphics.measure_text ctx style#fontInfo text;
         defaultCached <- Graphics.measure_text ctx style#fontInfo "default_size";
         events#handle HandlesEvent.(mkEvent `TextChanged (`TextChangedP text));
-        self#invalidate;
 
     method showCursor = showCursor
     method setShowCursor b = showCursor <- b
@@ -105,7 +104,6 @@ class ['a, 'b] textBoxWidget app = object(self)
         | Keys.W when app#specialKeys.ctrlDown -> self#deleteWordBehindCursor
         | key when Keys.is_printable key -> self#insertAtCursor (Keys.to_string key)
         | _ -> ());
-        self#invalidate;
 
     method private renderText =
         if hideText then String.make (String.length text) passwordChar

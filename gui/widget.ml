@@ -29,9 +29,6 @@ class ['a, 'b] basicWidget app = object(self)
         layout <- Some l;
         self#renderObject#attach l#renderObject;
 
-    method invalidate : unit =
-        app#redrawWidget (self :> ('a, 'b) HandlesEvent.handles_event)
-
     method contentSize = 
         match layout with
         | Some l -> l#preferredSize

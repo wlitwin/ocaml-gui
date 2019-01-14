@@ -215,3 +215,23 @@ let draw cr tree =
     )
 ;;
 
+class renderer = object(self)
+    val mutable root = new nodeObject
+    val mutable requestDraw : unit -> unit = fun _ -> ()
+    val mutable immediateUpdates = true
+
+    method setRoot r = root <- r
+    method root = root
+
+    method setImmediateUpdates p = immediateUpdates <- p
+    method pause = immediateUpdates <- false
+    method resume = immediateUpdates <- true
+
+    method setRequestDraw f =
+        requestDraw <- f
+
+    method render cr =
+        if immediateUpdates then
+            draw cr root
+end
+
