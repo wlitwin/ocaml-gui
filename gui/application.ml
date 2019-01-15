@@ -19,6 +19,7 @@ object(self)
     }
 
     method specialKeys = special_keys
+    method renderer = renderer
 
     method title = title
     method setTitle t =

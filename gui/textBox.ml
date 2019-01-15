@@ -131,7 +131,7 @@ class ['a, 'b] textBoxWidget app = object(self)
             *)
 
     initializer
-        style#setBGColor Color.white;
+        self#setBGColor Color.white;
         style#borderStyle#setStyle Rectangle;
         style#borderStyle#setSize 2.0;
         style#borderStyle#setColor Color.black;

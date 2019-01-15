@@ -20,6 +20,7 @@ type primitive = {
 
 type content = Translate of Pos.t
              | Group of (int * primitive list) list
+             | Primitive of primitive
              | AddZ of int
 
 type node = {
@@ -27,22 +28,6 @@ type node = {
     content : content;
     children : node list;
 }
-
-class nodeObject = object(self)
-    val mutable content = Group [0, []]
-    val mutable children : nodeObject list = []
-
-    method content = content
-    method setContent c = content <- c
-    method children = children
-
-    method attach obj =
-        self#detach obj;
-        children <- obj :: children
-
-    method detach obj =
-        children <- List.filter children (fun o -> not (phys_equal obj o))
-end
 
 let mk_rect (rect, color, draw_type : Rect.t * Color.t * draw_type) = {
     pos = Pos.{x=rect.x; y=rect.y};
@@ -142,49 +127,55 @@ let sort_tree root =
             );
             List.iter node#children (traverse (z_index, pos)) 
         | AddZ amt -> List.iter node#children (traverse (z_index+amt, pos))
+        | Primitive primitive -> add_prims_by_z (z_index, pos, [primitive])
     in
     traverse (0, Pos.zero) root;
     let keys = 
         HP.keys z_tbl 
         |> List.sort ~compare
     in
-    (*let count = List.length keys in*)
+    let count = List.length keys in
     let sorted : render_list list list = List.fold keys ~init:[] ~f:(fun lst z_index ->
         let prims = HP.find_exn z_tbl z_index in
         (group_prims prims) :: lst
     ) in
-    List.rev sorted |> List.concat
+    let z_sorted = Array.create ~len:count [] in
+    List.iteri sorted (fun idx lst ->
+        z_sorted.(count - idx - 1) <- lst
+    );
+    z_sorted
 ;;
 
 module Graphics = Platform.Windowing.Graphics
 
 let draw_tree cr tree =
     (*Stdio.printf "RENDER LIST IS %d IN LENGTH\n" (List.length tree);*)
-    List.iter tree (function
-        | TextList {draw_type=Stroke} -> failwith "Unsupported stroke text"
-        | TextList {draw_type=Fill; font; color; text} ->
-            (*Stdio.printf "TEXT LIST %d\n" (List.length text);*)
-            Graphics.set_color cr color;
-            Graphics.set_font_info cr font;
-            List.iter text (fun (pos, text) ->
-                Graphics.draw_text_ cr pos text
-                (*Graphics.draw_text cr font Rect.{x=pos.x; y=pos.y; w=0.; h=0.} text*)
-            )
-        | RectangleList {draw_type=Fill; color; rects} ->
-            (*Stdio.printf "RECT LIST (F) %d\n" (List.length rects);*)
-            Graphics.set_color cr color;
-            List.iter rects (fun r ->
-                Graphics.rectangle cr r;
-                Graphics.fill cr;
-            )
-        | RectangleList {draw_type=Stroke; color; rects} ->
-            (*Stdio.printf "RECT LIST (S) %d\n" (List.length rects);*)
-            Graphics.set_color cr color;
-            List.iter rects (fun r ->
-                Graphics.rectangle cr r;
-                Graphics.stroke cr;
-            )
-    )
+    Array.iter tree (fun lst ->
+        List.iter lst (function
+            | TextList {draw_type=Stroke} -> failwith "Unsupported stroke text"
+            | TextList {draw_type=Fill; font; color; text} ->
+                Stdio.printf "TEXT LIST color %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length text);
+                Graphics.set_color cr color;
+                Graphics.set_font_info cr font;
+                List.iter text (fun (pos, text) ->
+                    Graphics.draw_text_ cr pos text
+                    (*Graphics.draw_text cr font Rect.{x=pos.x; y=pos.y; w=0.; h=0.} text*)
+                )
+            | RectangleList {draw_type=Fill; color; rects} ->
+                Stdio.printf "RECT LIST (F) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);
+                Graphics.set_color cr color;
+                List.iter rects (fun r ->
+                    Graphics.rectangle cr r;
+                    Graphics.fill cr;
+                )
+            | RectangleList {draw_type=Stroke; color; rects} ->
+                Stdio.printf "RECT LIST (S) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);
+                Graphics.set_color cr color;
+                List.iter rects (fun r ->
+                    Graphics.rectangle cr r;
+                    Graphics.stroke cr;
+                )
+    ))
 ;;
 
 let print_tree tree =
@@ -198,6 +189,8 @@ let print_tree tree =
             Stdio.printf "%sGROUP [%d items]" pad items
         | Translate _ -> Stdio.printf "%sTranslate" pad
         | AddZ amt -> Stdio.printf "%sAddZ %d" pad amt
+        | Primitive {shape_type=Rectangle _} -> Stdio.printf "%sPrim[Rect]" pad
+        | Primitive {shape_type=Text _} -> Stdio.printf "%sPrim[Text]" pad
         end;
         Stdio.printf " -- with children %d\n" (List.length node#children);
         List.iter node#children (print (idnt+2))
@@ -206,7 +199,7 @@ let print_tree tree =
 ;;
 
 let draw cr tree =
-(*    print_tree tree;*)
+    print_tree tree;
     let tree = Util.timeit "Sort time" (fun _ ->
         sort_tree tree
     ) in
@@ -215,8 +208,67 @@ let draw cr tree =
     )
 ;;
 
+class nodeObject renderer = object(self)
+    val mutable content = Group [0, []]
+    val mutable children : nodeObject list = []
+    val renderer = renderer
+
+    method content = content
+    method setContent c = content <- c
+    method children = children
+
+    method attach obj =
+        self#detach obj;
+        children <- obj :: children
+
+    method detach obj =
+        children <- List.filter children (fun o -> not (phys_equal obj o))
+end
+
+class groupObject renderer = object(self)
+    inherit nodeObject renderer
+end
+
+class textObject renderer = object(self)
+    inherit nodeObject renderer
+
+    initializer
+        self#setContent (Primitive {
+            pos=Pos.zero;
+            draw_type=Fill;
+            shape_type=Text {text=""; font=Font.default_font};
+            color=Color.black;
+        })
+end
+
+class rectObject renderer = object(self)
+    inherit nodeObject renderer
+
+    method private prim =
+        match self#content with
+        | Primitive prim -> prim
+        | _ -> failwith "Invalid"
+
+    method setColor color =
+        self#setContent (Primitive {self#prim with color})
+
+    method setRect (r : Rect.t) =
+        self#setContent (Primitive {self#prim with 
+            pos=Pos.{x=r.x; y=r.y}; 
+            shape_type=Rectangle Size.{w=r.w; h=r.h}
+        })
+    
+    initializer
+        self#setContent (Primitive {
+            pos=Pos.zero;
+            draw_type=Fill;
+            shape_type=Rectangle Size.{w=100.; h=100.};
+            color=Color.red;
+        })
+end
+
 class renderer = object(self)
-    val mutable root = new nodeObject
+    val mutable root = new nodeObject (object end)
     val mutable requestDraw : unit -> unit = fun _ -> ()
     val mutable immediateUpdates = true
 
@@ -227,6 +279,10 @@ class renderer = object(self)
     method pause = immediateUpdates <- false
     method resume = immediateUpdates <- true
 
+    method createTextObject = new textObject self
+    method createRectObject = new rectObject self
+    method createGroupObject = new groupObject self
+
     method setRequestDraw f =
         requestDraw <- f
 
@@ -235,3 +291,11 @@ class renderer = object(self)
             draw cr root
 end
 
+(*
+let _ =
+    let renderer = new renderer in
+    let top = new nodeObject in
+    let text = new textObject in
+    let rect = new rectObject in
+    ()
+    *)

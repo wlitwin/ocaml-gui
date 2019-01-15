@@ -231,7 +231,7 @@ let layout rect deps =
     PolyHash.iter_keys deps.constraints (set_rectangle field_tbl)
 ;;
 
-class ['a, 'b] constraintLayout (rules : ('a, 'b) constraint_inputs list) =
+class ['a, 'b] constraintLayout (rules : ('a, 'b) constraint_inputs list) renderer =
     let simple_items = List.map rules (fun x -> 
         { item = (x.input_item :> item); loc = x.input_loc }
     ) in
@@ -240,6 +240,7 @@ class ['a, 'b] constraintLayout (rules : ('a, 'b) constraint_inputs list) =
 object(self)
     inherit ['a, 'b] Layout.layout as super
 
+    val renderObject = renderer#createGroupObject
     val events = HandlesEvent.create()
     
     val table = Hashtbl.Poly.create()

@@ -15,8 +15,5 @@ object(self)
     method! onResize r =
         super#onResize r;
         self#layout r;
-        DynArray.iter (fun item ->
-            item#onDraw
-        ) self#items
 end
 

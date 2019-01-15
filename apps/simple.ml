@@ -26,13 +26,8 @@ object
                  Rendering.fill_rect Rect.{x=r.x; y=r.y+.r.h*.0.5; w=r.w; h=r.h*.0.5} Color.orange] @ mk_text 100);
         ])
 
-    method! onDraw =
-        ()
-        (*
-       Util.timeit "Tree sort+draw" (fun _ ->
-           Rendering.draw cr renderNode
-       );
-       *)
+    initializer
+        renderObject#detach (bgRect :> Rendering.nodeObject)
 end
 
 class ['a, 'b] simple app =
@@ -85,11 +80,11 @@ object(self)
                  bottom=wBottom ~-.10.
             }};
         ] in
-        let layout = new ConstraintLayout.constraintLayout rules in
-        widget1#style#setBGColor Color.red;
-        widget2#style#setBGColor Color.yellow;
-        widget3#style#setBGColor Color.green;
-        widget4#style#setBGColor Color.blue;
+        let layout = new ConstraintLayout.constraintLayout rules app#renderer in
+        widget1#setBGColor Color.red;
+        widget2#setBGColor Color.yellow;
+        widget3#setBGColor Color.green;
+        widget4#setBGColor Color.blue;
         self#setLayout (layout :> ('a, 'b) Layout.layout)
 
     inherit ['a, 'b] Focusable.focusManager app [(label1 :> ('a, 'b) HandlesEvent.handles_event)]
