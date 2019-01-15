@@ -1,26 +1,20 @@
 module Graphics = Platform.Windowing.Graphics
 
 class ['a, 'b] basicWidget app = object(self)
-    val id = 0
-    val style = new Style.style
-    val application = app
-    val mutable eventHandlers = []
-    val mutable snoopers = []
-    val mutable rect = Rect.empty
-    val mutable layout : ('a, 'b) Layout.layout option = None
-    val table = Hashtbl.Poly.create()
-    val rev_table = Hashtbl.Poly.create()
-
-    val bgRect : Rendering.rectObject = app#renderer#createRectObject
-    val renderObject = app#renderer#createGroupObject
-
     inherit Stylable.styleable
     inherit ['a, 'b] Layoutable.layoutable
     inherit HandlesMouse.handlesMouse
     inherit HandlesKeyboard.handlesKeyboard
     inherit Focusable.focusable
 
+    val id = 0
+    val style = new Style.style
+    val application = app
     val events = HandlesEvent.create()
+    val bgRect : Rendering.rectObject = app#renderer#createRectObject
+    val renderObject = app#renderer#createGroupObject
+    val mutable rect = Rect.empty
+    val mutable layout : ('a, 'b) Layout.layout option = None
 
     method events : ('a, 'b) HandlesEvent.event_store = events
 
