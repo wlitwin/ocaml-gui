@@ -118,6 +118,7 @@ let sort_tree root =
         )
     in
     let rec traverse (z_index, pos : int * Pos.t) node =
+        let z_index = z_index + node#zIndex in
         match node#content with
         | Translate amt -> List.iter node#children (traverse (z_index, Pos.add pos amt))
         | Group groups ->
@@ -218,6 +219,10 @@ class nodeObject renderer = object(self)
     val mutable content = Group [0, []]
     val mutable children : nodeObject list = []
     val renderer = renderer
+    val mutable z_index = 0
+
+    method zIndex = z_index
+    method setZIndex z = z_index <- z
 
     method content = content
     method setContent c : unit = 
@@ -252,6 +257,8 @@ class primObject renderer = object(self)
     method setMode draw_type = 
         self#setContent (Primitive {self#prim with draw_type})
 
+    method pos : Pos.t = self#prim.pos
+
     method setPos pos = 
         self#setContent (Primitive {self#prim with pos})
 end
@@ -277,7 +284,7 @@ class textObject renderer = object(self)
     method setText text =
         let ti = self#text_info in
         size <- renderer#measureText(ti.font, ti.text);
-        self#setContent (Primitive {self#prim with shape_type=Text {self#text_info with text}})
+        self#setContent (Primitive {self#prim with shape_type=Text {ti with text}})
 
     method setFont font =
         self#setContent (Primitive {self#prim with shape_type=Text {self#text_info with font}})

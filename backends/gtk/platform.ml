@@ -62,7 +62,6 @@ module CairoGraphics = struct
     let measure_text_no_context (font, text) =
         measure_text dummy_ctx font text
 
-
     let font_extents_no_context (font_info : Font.t) : Font.font_extents = 
         let cr = dummy_ctx in
         Cairo.select_font_face cr font_info.font ~weight:(font_weight_to_cairo font_info.weight);

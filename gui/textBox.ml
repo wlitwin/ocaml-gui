@@ -9,11 +9,17 @@ class ['a, 'b] textBoxWidget app = object(self)
     val mutable cursorLoc = 0
     val mutable showCursor = true
     val textObject = app#renderer#createTextObject
+    val cursorObject = app#renderer#createRectObject
+    val border = app#renderer#createRectObject
 
     method text = textObject#text
     method setText new_text =
-        textObject#setText new_text;
+        self#setTextInternal new_text;
         self#moveCursorToEnd;
+
+    method private setTextInternal new_text =
+        textObject#setText new_text;
+        self#updateCursor;
         events#handle HandlesEvent.(mkEvent `TextChanged (`TextChangedP new_text));
 
     method showCursor = showCursor
@@ -42,41 +48,45 @@ class ['a, 'b] textBoxWidget app = object(self)
 
     method private insertAtCursor new_char =
         let before, after = self#splitOnCursor in
-        textObject#setText (before ^ new_char ^ after);
-        cursorLoc <- cursorLoc + 1
+        cursorLoc <- cursorLoc + 1;
+        self#setTextInternal (before ^ new_char ^ after);
 
     method private deleteAtCursor =
         let before, after = self#splitOnCursor in
         let before = String.sub before 0 (max 0 (String.length before - 1)) in
-        textObject#setText (before ^ after);
-        self#moveCursorBack
+        self#moveCursorBack;
+        self#setTextInternal (before ^ after);
 
     method private moveCursorBack =
-        cursorLoc <- if cursorLoc > 0 then cursorLoc - 1 else 0
+        cursorLoc <- (if cursorLoc > 0 then cursorLoc - 1 else 0);
+        self#updateCursor
 
     method private moveCursorForward =
         let len = String.length self#text in
-        cursorLoc <- if cursorLoc < len then cursorLoc + 1 else len
+        cursorLoc <- if cursorLoc < len then cursorLoc + 1 else len;
+        self#updateCursor
 
     method private moveCursorToBeginning =
-        cursorLoc <- 0
+        cursorLoc <- 0;
+        self#updateCursor
 
     method private moveCursorToEnd =
-        cursorLoc <- String.length self#text
+        cursorLoc <- String.length self#text;
+        self#updateCursor
 
     method private deleteWordBehindCursor =
         (* TODO just use a while loop *)
         match String.rindex_from self#text (max 0 (cursorLoc - 2)) ' ' with
         | None -> 
             let text = self#text in
-            textObject#setText (String.sub text cursorLoc (String.length text - cursorLoc));
             cursorLoc <- 0;
+            self#setTextInternal (String.sub text cursorLoc (String.length text - cursorLoc));
         | Some idx ->
             let text = self#text in
             let before = String.sub text 0 (idx + 1)
             and after = String.sub text cursorLoc (String.length text - cursorLoc) in
-            textObject#setText (before ^ after);
             cursorLoc <- idx + 1;
+            self#setTextInternal (before ^ after);
 
     method! onKeyDown key =
         let open Application in
@@ -92,36 +102,22 @@ class ['a, 'b] textBoxWidget app = object(self)
         | key when Keys.is_printable key -> self#insertAtCursor (Keys.to_string key)
         | _ -> ());
 
-        (*
-    method private drawCursor cr =
-        if showCursor then begin
-            Graphics.save cr;
-            let text = String.sub self#renderText 0 cursorLoc in
-            let size = Graphics.measure_text cr style#fontInfo text in
-            let fgColor = style#fgColor in
-            Graphics.set_color cr fgColor;
-            Graphics.set_width cr 1.;
-            Graphics.move_to cr (rect.x +. size.width) (rect.y +. rect.h);
-            Graphics.line_to cr (rect.x +. size.width) rect.y;
-            Graphics.stroke cr;
-            Graphics.restore cr;
-        end
-*)
+    method updateCursor =
+        let text = String.sub textObject#text 0 cursorLoc in
+        let size : Size.t = app#renderer#measureText (textObject#font, text) in
+        cursorObject#setRect Rect.{x=rect.x+.size.w; y=rect.y; w=1.; h=rect.h}
 
-    val border = app#renderer#createRectObject
+    method! onFocused =
+        renderObject#attach (cursorObject :> Rendering.nodeObject)
+
+    method! onUnfocused =
+        renderObject#detach (cursorObject :> Rendering.nodeObject)
 
     method! onResize r =
         super#onResize r;
-        border#setRect r;
+        border#setRect rect;
         let fe : Font.font_extents = textObject#fontExtents in
-        textObject#setPos Pos.{x=r.x; y=r.y+.fe.Font.ascent};
-
-        (*
-    method! paint cr =
-        self#drawText cr;
-        if isFocused then
-            self#drawCursor cr
-            *)
+        textObject#setPos Pos.{x=rect.x; y=rect.y+.fe.Font.ascent};
 
     initializer
         textObject#setText "";
@@ -130,8 +126,10 @@ class ['a, 'b] textBoxWidget app = object(self)
         border#setColor Color.black;
         renderObject#attach (border :> Rendering.nodeObject);
         renderObject#attach (textObject :> Rendering.nodeObject);
-        style#borderStyle#setStyle Rectangle;
-        style#borderStyle#setSize 2.0;
-        style#borderStyle#setColor Color.black;
-        self#setText ""
+        renderObject#attach (cursorObject :> Rendering.nodeObject);
+        border#setZIndex 1;
+        textObject#setZIndex 2;
+        cursorObject#setZIndex 2;
+        cursorObject#setRect Rect.{x=0.; y=0.; w=1.; h=1.};
+        cursorObject#setColor Color.black;
 end
