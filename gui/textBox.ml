@@ -26,19 +26,6 @@ class ['a, 'b] textBoxWidget app = object(self)
     method setShowCursor b = showCursor <- b
 
     method contentSize = textObject#size
-        (*
-        let metrics = 
-            if String.is_empty text then defaultCached
-            else measuredCached 
-        in
-        Size.{w=metrics.width; h=metrics.ascent +. metrics.descent}
-        *)
-
-        (*
-    method measureText cr text =
-        let metrics = Graphics.measure_text cr style#fontInfo text in
-        Size.{w=metrics.width; h=metrics.ascent +. metrics.descent}
-        *)
 
     method private splitOnCursor =
         let text = self#text in
