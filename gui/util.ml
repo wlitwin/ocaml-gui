@@ -13,6 +13,13 @@ let timeit name f =
     res
 ;;
 
+let time f =
+    let start = Unix.gettimeofday() in
+    f();
+    let end_ = Unix.gettimeofday() in
+    end_ -. start
+;;
+
 let iceil = Fn.compose Int.of_float Caml.ceil
 
 let strLeft str =

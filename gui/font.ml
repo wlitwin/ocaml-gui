@@ -1,6 +1,14 @@
 type weight = Normal
             | Bold
 
+type font_extents = {
+    ascent : float; 
+    descent : float;
+    baseline : float;
+    max_x_advance : float;
+    max_y_advance : float;
+}
+
 type metrics = {
     width : float;
     x_bearing : float;

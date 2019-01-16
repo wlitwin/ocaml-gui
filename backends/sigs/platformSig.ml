@@ -39,6 +39,8 @@ module type GraphicsSig = sig
     val draw_text_ : context -> Pos.t -> string -> unit
 
     val measure_text : context -> Font.t -> string -> Font.metrics
+    val measure_text_no_context : (Font.t * string) -> Font.metrics
+    val font_extents_no_context : Font.t -> Font.font_extents
     val draw_text : context -> Font.t -> Rect.t -> string -> unit
 
     val clip_rect : context -> Rect.t -> unit

@@ -154,26 +154,32 @@ let draw_tree cr tree =
         List.iter lst (function
             | TextList {draw_type=Stroke} -> failwith "Unsupported stroke text"
             | TextList {draw_type=Fill; font; color; text} ->
-                Stdio.printf "TEXT LIST color %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length text);
-                Graphics.set_color cr color;
-                Graphics.set_font_info cr font;
-                List.iter text (fun (pos, text) ->
-                    Graphics.draw_text_ cr pos text
-                    (*Graphics.draw_text cr font Rect.{x=pos.x; y=pos.y; w=0.; h=0.} text*)
+                Util.timeit "TEXT LIST TIME" (fun _ ->
+                    Stdio.printf "TEXT LIST color %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length text);
+                    Graphics.set_color cr color;
+                    Graphics.set_font_info cr font;
+                    List.iter text (fun (pos, text) ->
+                        Graphics.draw_text_ cr pos text
+                        (*Graphics.draw_text cr font Rect.{x=pos.x; y=pos.y; w=0.; h=0.} text*)
+                    )
                 )
             | RectangleList {draw_type=Fill; color; rects} ->
-                Stdio.printf "RECT LIST (F) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);
-                Graphics.set_color cr color;
-                List.iter rects (fun r ->
-                    Graphics.rectangle cr r;
-                    Graphics.fill cr;
+                Util.timeit "RECT LIST [F] TIME" (fun _ ->
+                    Stdio.printf "RECT LIST (F) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);
+                    Graphics.set_color cr color;
+                    List.iter rects (fun r ->
+                        Graphics.rectangle cr r;
+                        Graphics.fill cr;
+                    )
                 )
             | RectangleList {draw_type=Stroke; color; rects} ->
-                Stdio.printf "RECT LIST (S) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);
-                Graphics.set_color cr color;
-                List.iter rects (fun r ->
-                    Graphics.rectangle cr r;
-                    Graphics.stroke cr;
+                Util.timeit "RECT LIST [S] TIME" (fun _ ->
+                    Stdio.printf "RECT LIST (S) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);
+                    Graphics.set_color cr color;
+                    List.iter rects (fun r ->
+                        Graphics.rectangle cr r;
+                        Graphics.stroke cr;
+                    )
                 )
     ))
 ;;
@@ -200,10 +206,10 @@ let print_tree tree =
 
 let draw cr tree =
     print_tree tree;
-    let tree = Util.timeit "Sort time" (fun _ ->
+    let tree = Util.timeit "Sort tree time" (fun _ ->
         sort_tree tree
     ) in
-    Util.timeit "Draw time" (fun _ ->
+    Util.timeit "Draw tree time" (fun _ ->
         draw_tree cr tree
     )
 ;;
@@ -214,7 +220,10 @@ class nodeObject renderer = object(self)
     val renderer = renderer
 
     method content = content
-    method setContent c = content <- c
+    method setContent c : unit = 
+        content <- c;
+        renderer#update
+
     method children = children
 
     method attach obj =
@@ -229,8 +238,49 @@ class groupObject renderer = object(self)
     inherit nodeObject renderer
 end
 
-class textObject renderer = object(self)
+class primObject renderer = object(self)
     inherit nodeObject renderer
+
+    method private prim =
+        match self#content with
+        | Primitive prim -> prim
+        | _ -> failwith "Invalid"
+
+    method setColor color =
+        self#setContent (Primitive {self#prim with color})
+
+    method setMode draw_type = 
+        self#setContent (Primitive {self#prim with draw_type})
+
+    method setPos pos = 
+        self#setContent (Primitive {self#prim with pos})
+end
+
+class textObject renderer = object(self)
+    inherit primObject renderer
+
+    val mutable size = Size.zero
+
+    method private text_info =
+        match self#prim.shape_type with
+        | Text ti -> ti
+        | _ -> failwith "Invalid"
+
+    method text = self#text_info.text
+    method font = self#text_info.font
+
+    method fontExtents : Font.font_extents =
+        renderer#fontExtents self#font
+
+    method size = size
+
+    method setText text =
+        let ti = self#text_info in
+        size <- renderer#measureText(ti.font, ti.text);
+        self#setContent (Primitive {self#prim with shape_type=Text {self#text_info with text}})
+
+    method setFont font =
+        self#setContent (Primitive {self#prim with shape_type=Text {self#text_info with font}})
 
     initializer
         self#setContent (Primitive {
@@ -242,15 +292,12 @@ class textObject renderer = object(self)
 end
 
 class rectObject renderer = object(self)
-    inherit nodeObject renderer
+    inherit primObject renderer
 
-    method private prim =
-        match self#content with
-        | Primitive prim -> prim
-        | _ -> failwith "Invalid"
-
-    method setColor color =
-        self#setContent (Primitive {self#prim with color})
+    method setSize (size : Size.t) =
+        self#setContent (Primitive {self#prim with
+            shape_type=Rectangle size
+        })
 
     method setRect (r : Rect.t) =
         self#setContent (Primitive {self#prim with 
@@ -268,7 +315,7 @@ class rectObject renderer = object(self)
 end
 
 class renderer = object(self)
-    val mutable root = new nodeObject (object end)
+    val mutable root = new nodeObject (object method update = () end)
     val mutable requestDraw : unit -> unit = fun _ -> ()
     val mutable immediateUpdates = true
 
@@ -279,9 +326,18 @@ class renderer = object(self)
     method pause = immediateUpdates <- false
     method resume = immediateUpdates <- true
 
+    method measureText (font, text) =
+        let metrics = Graphics.measure_text_no_context(font, text) in
+        Size.{w=metrics.width; h=metrics.ascent+.metrics.descent}
+
+    method fontExtents font : Font.font_extents =
+        Graphics.font_extents_no_context font
+
     method createTextObject = new textObject self
     method createRectObject = new rectObject self
     method createGroupObject = new groupObject self
+
+    method update = requestDraw()
 
     method setRequestDraw f =
         requestDraw <- f

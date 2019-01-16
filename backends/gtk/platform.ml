@@ -53,6 +53,27 @@ module CairoGraphics = struct
         }
     ;;
 
+    let dummy_ctx = 
+        let module CI = Cairo.Image in
+        let img = CI.create CI.ARGB32 1 1 in
+        Cairo.create img
+    ;;
+
+    let measure_text_no_context (font, text) =
+        measure_text dummy_ctx font text
+
+
+    let font_extents_no_context (font_info : Font.t) : Font.font_extents = 
+        let cr = dummy_ctx in
+        Cairo.select_font_face cr font_info.font ~weight:(font_weight_to_cairo font_info.weight);
+        Cairo.set_font_size cr font_info.size;
+        let fe = Cairo.font_extents cr in
+        {ascent=fe.ascent;
+         descent=fe.descent;
+         baseline=fe.baseline;
+         max_x_advance=fe.max_x_advance;
+         max_y_advance=fe.max_y_advance}
+
     let set_font_info cr (font_info : Font.t) =
         Cairo.select_font_face cr font_info.font ~weight:(font_weight_to_cairo font_info.weight);
         Cairo.set_font_size cr font_info.size;
