@@ -15,9 +15,9 @@ let timeit name f =
 
 let time f =
     let start = Unix.gettimeofday() in
-    f();
+    let res = f() in
     let end_ = Unix.gettimeofday() in
-    end_ -. start
+    res, (end_ -. start)*.1000.0
 ;;
 
 let iceil = Fn.compose Int.of_float Caml.ceil

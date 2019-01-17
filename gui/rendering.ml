@@ -207,12 +207,13 @@ let print_tree tree =
 
 let draw cr tree =
     print_tree tree;
-    let tree = Util.timeit "Sort tree time" (fun _ ->
+    let tree, tree_time = Util.time (fun _ ->
         sort_tree tree
     ) in
-    Util.timeit "Draw tree time" (fun _ ->
+    let _, draw_time = Util.time (fun _ ->
         draw_tree cr tree
-    )
+    ) in
+    tree_time, draw_time
 ;;
 
 class nodeObject renderer = object(self)
@@ -220,6 +221,8 @@ class nodeObject renderer = object(self)
     val mutable children : nodeObject list = []
     val renderer = renderer
     val mutable z_index = 0
+
+    method rect = Rect.empty
 
     method zIndex = z_index
     method setZIndex z = z_index <- z
@@ -279,6 +282,10 @@ class textObject renderer = object(self)
     method fontExtents : Font.font_extents =
         renderer#fontExtents self#font
 
+    method! rect =
+        let prim = self#prim in
+        Rect.{x=prim.pos.x; y=prim.pos.y; w=size.w; h=size.h}
+
     method size = size
 
     method setText text =
@@ -305,6 +312,16 @@ class rectObject renderer = object(self)
         self#setContent (Primitive {self#prim with
             shape_type=Rectangle size
         })
+
+    method size =
+        match self#prim.shape_type with
+        | Rectangle size -> size
+        | _ -> failwith "Should be rectangle"
+
+    method! rect =
+        let prim = self#prim in
+        let size = self#size in
+        Rect.{x=prim.pos.x; y=prim.pos.y; w=size.w; h=size.h}
 
     method setRect (r : Rect.t) =
         self#setContent (Primitive {self#prim with 
@@ -349,9 +366,22 @@ class renderer = object(self)
     method setRequestDraw f =
         requestDraw <- f
 
+    val stat_font = Font.{
+        size = 20.;
+        font = "Ubuntu mono";
+        weight = Bold;
+    }
+
+    val mutable size = Size.zero
+    method setSize s = size <- s
+
     method render cr =
-        if immediateUpdates then
-            draw cr root
+        if immediateUpdates then (
+            let sort_time, draw_time =  draw cr root in
+            let text = Printf.sprintf "S %.3fms D %.3fms" sort_time draw_time in
+            Graphics.set_font_info cr stat_font;
+            Graphics.draw_text_ cr Pos.{x=0.; y=size.h -. 2.} text;
+        )
 end
 
 (*

@@ -37,6 +37,7 @@ object(self)
     method resize (size : Size.t) =
          Util.timeit "resize" (fun _ ->
             let open Layoutable in
+            renderer#setSize size;
             renderer#pause;
             self#widget#events#handle HandlesEvent.(mkEvent `Resize (`ResizeArg Rect.{x=0.;y=0.;w=size.w;h=size.h}));
             renderer#resume;

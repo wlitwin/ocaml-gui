@@ -70,14 +70,14 @@ object(self)
                  top=bottomOf lWidget1 10.;
                  left=wLeft 10.;
                  right=rightOf lWidget1 0.;
-                 bottom=wBottom ~-.10.
+                 bottom=wBottom ~-.20.
             }};
             {input_item=lWidget4;
              input_loc={
                  top=bottomOf lWidget2 10.;
                  left=leftOf lWidget2 0.;
                  right=wRight ~-.10.;
-                 bottom=wBottom ~-.10.
+                 bottom=wBottom ~-.20.
             }};
         ] in
         let layout = new ConstraintLayout.constraintLayout rules app#renderer in
