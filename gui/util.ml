@@ -34,3 +34,29 @@ let strRight str =
     else String.sub str 1 (len - 1)
 ;;
 
+let array_concat arr =
+    let sum = Array.fold ~init:0 ~f:(fun s a -> s + Array.length a) arr in
+    if sum = 0 then [||]
+    else begin
+        let init =
+            let rec loop i =
+                if i >= sum then failwith "Impossible"
+                else begin
+                    if Array.length(arr.(i)) > 0 then
+                        arr.(i).(0)
+                    else loop (i+1)
+                end
+            in
+            loop 0
+        in
+        let out = Array.create ~len:sum init in
+        let idx = ref 0 in
+        for i = 0 to sum-1 do
+            let src = arr.(i) in
+            let len = Array.length src in
+            Array.blit ~src ~src_pos:0 ~dst:out ~dst_pos:(!idx) ~len;
+            idx := len + !idx
+        done;
+        out
+    end
+;;

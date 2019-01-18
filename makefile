@@ -2,14 +2,16 @@
 
 OCAMLBUILD = ocamlbuild -use-ocamlfind
 
-PKGS=cairo2,cairo2.lablgtk2,lablgtk2,lablgtk2-extras,base,extlib,core
+PKGS=cairo2,cairo2.lablgtk2,lablgtk2,base,extlib,core
 #,ocamlgraph,ocamlgraph.dgraph
 JS_PKGS=base,js_of_ocaml,js_of_ocaml-ocamlbuild,js_of_ocaml-ppx,extlib
 
 COMMON_INCLUDES=-I apps/ -I gui/ -I backends/sigs/ -I gui/layout/
 
+SPACETIME=-ocamlopt /home/walter/code/ocaml/build/bin/ocamlopt
+
 dbg:
-	$(OCAMLBUILD) -cflags -annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread $(COMMON_INCLUDES) -I backends/gtk -I src src/main.d.byte
+	$(OCAMLBUILD) -cflags -g,-annot,-bin-annot,'-open Base' -pkg $(PKGS) -tag thread $(COMMON_INCLUDES) -I backends/gtk -I src src/main.native
 
 js:
 	$(OCAMLBUILD) -plugin-tag "package(js_of_ocaml.ocamlbuild)" -cflags -annot,-bin-annot,'-open Base' -pkg $(JS_PKGS) $(COMMON_INCLUDES) -tag 'opt(3)' -I backends/canvas/ src/main.js

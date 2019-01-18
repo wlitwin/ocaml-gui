@@ -26,46 +26,46 @@ module Constraint = struct
            | ILeft of item
            | IRight of item
            (* Combinations *)
-           | Add of t list
-           | Sub of t list
-           | Mul of t list
-           | Div of t list
-           | Max of t list
-           | Min of t list
-           | FunDep of item_dep list * (field_tbl -> float)
+           | Add of t array
+           | Sub of t array
+           | Mul of t array
+           | Div of t array
+           | Max of t array
+           | Min of t array
+           | FunDep of item_dep array * (field_tbl -> float)
            | Const of float
 
     let rec gather_dependencies = function
-        | ITop item -> [item, DTop]
-        | IBottom item -> [item, DBottom]
-        | ILeft item -> [item, DLeft]
-        | IRight item -> [item, DRight]
+        | ITop item -> [|item, DTop|]
+        | IBottom item -> [|item, DBottom|]
+        | ILeft item -> [|item, DLeft|]
+        | IRight item -> [|item, DRight|]
         | Add lst
         | Sub lst
         | Mul lst
         | Div lst
         | Max lst
-        | Min lst -> List.map lst gather_dependencies |> List.concat
+        | Min lst -> Array.map lst gather_dependencies |> Util.array_concat
         | FunDep (lst, _) -> lst
         | WTop
         | WLeft
         | WRight
         | WBottom
-        | Const _ -> []
+        | Const _ -> [||]
 ;;
 
     (* Lots of common helper methods *) 
-    let relative t amt = Add [t; Const amt]
+    let relative t amt = Add [|t; Const amt|]
 
     let preferredW item = 
         let key = (item :> item), DLeft in
-        FunDep ([key], fun tbl -> 
+        FunDep ([|key|], fun tbl -> 
             PolyHash.find_exn tbl key +. (item :> item)#preferredSize.w
     )
 
     let preferredH item = 
         let key = (item :> item), DTop in
-        FunDep ([key], fun tbl -> 
+        FunDep ([|key|], fun tbl -> 
             PolyHash.find_exn tbl key +. (item :> item)#preferredSize.h
     )
 
@@ -81,7 +81,7 @@ module Constraint = struct
 
     let centerTop toCenter ref = 
         let ref = (ref :> item) in
-        FunDep ([(ref, DTop); (ref, DBottom)], fun fields ->
+        FunDep ([|(ref, DTop); (ref, DBottom)|], fun fields ->
             let lookup f = Hashtbl.Poly.find_exn fields f in
             let top = lookup (ref, DTop)
             and bot = lookup (ref, DBottom) in
@@ -112,14 +112,14 @@ type item_constraints = {
 module DependencyGraph = struct
     type t = {
         constraints : (item, item_constraints) PolyHash.t;
-        top_sort : (item * dep_field) list;
+        top_sort : (item * dep_field) array;
     }
 
     type field_tuple = item * Constraint.t * dep_field
     type visited_set = (item_dep, unit) PolyHash.t
 
     (* Topological sort, based on depth-first search *)
-    let depth_sort (tbl : (item_dep, item_dep list) PolyHash.t) (all : field_tuple list) : item_dep list =
+    let depth_sort (tbl : (item_dep, item_dep array) PolyHash.t) (all : field_tuple list) : item_dep array =
         let sorted = ref [] in
         let temp = PolyHash.create () in
         let perm = PolyHash.create () in
@@ -133,13 +133,13 @@ module DependencyGraph = struct
             else begin
                 mark_temp key;
                 let lst = PolyHash.find_exn tbl key in
-                List.iter lst visit;
+                Array.iter lst visit;
                 mark_perm key;
                 sorted := key :: !sorted;
             end
         in
         List.iter all (fun (i, _, d) -> visit (i, d));
-        List.rev !sorted
+        List.rev !sorted |> Array.of_list
     ;;
 
     let calculate_dependency_graph (lst : item_constraints list) : t =
@@ -159,7 +159,7 @@ module DependencyGraph = struct
             let key = (item, depField) in
             let dep_lst = Constraint.gather_dependencies loc in
             match PolyHash.find tbl key with
-            | Some lst -> PolyHash.set tbl key (dep_lst @ lst)
+            | Some lst -> PolyHash.set tbl key (Array.append dep_lst lst)
             | None -> PolyHash.set tbl key dep_lst 
         );
         {
@@ -181,10 +181,18 @@ let sel_field tbl (item, field) =
 let rec calc_loc (screen : Rect.t) field_tbl loc =
     let lookup t = PolyHash.find_exn field_tbl t in
     let recur = calc_loc screen field_tbl in
-    let app ~init ~f lst = 
-        lst
-        |> List.map ~f:recur
-        |> List.fold ~init ~f
+    let app (init, f, arr) : float =
+        arr 
+        |> Array.map ~f:recur
+        |> Array.fold ~init ~f
+    in
+    let dual_map (f, arr) : float =
+        let res = ref (recur arr.(0)) in
+        let len = Array.length arr in
+        for i=1 to len-1 do
+            res := f !res (recur arr.(i))
+        done;
+        !res
     in
     let open Constraint in
     match loc with
@@ -197,12 +205,12 @@ let rec calc_loc (screen : Rect.t) field_tbl loc =
     | IRight item -> lookup (item, DRight)
     | IBottom item -> lookup (item, DBottom)
     (* Hacky - dynamically recalculate the size *)
-    | Max lst -> app ~init:Float.min_value ~f:Float.max lst
-    | Min lst -> app ~init:Float.max_value ~f:Float.min lst
-    | Add lst -> app ~init:0. ~f:Float.add lst
-    | Mul lst -> app ~init:1. ~f:Float.( * ) lst
-    | Sub lst -> app ~init:(recur (List.hd_exn lst)) ~f:Float.sub (List.drop lst 1)
-    | Div lst -> app ~init:(recur (List.hd_exn lst)) ~f:Float.(/) (List.drop lst 1)
+    | Max lst -> app (Float.min_value, Float.max, lst)
+    | Min lst -> app (Float.max_value, Float.min, lst)
+    | Add lst -> app (0., Float.add, lst)
+    | Mul lst -> app (1., Float.( * ), lst)
+    | Sub lst -> dual_map (Float.sub, lst)
+    | Div lst -> dual_map (Float.(/), lst)
     | FunDep (_, f) -> f field_tbl
     | Const c -> c
 ;;
@@ -227,7 +235,7 @@ let set_rectangle tbl item =
 let layout rect deps =
     let open DependencyGraph in
     let field_tbl = PolyHash.create() in
-    List.iter deps.top_sort (layout_single_item rect deps.constraints field_tbl);
+    Array.iter deps.top_sort (layout_single_item rect deps.constraints field_tbl);
     PolyHash.iter_keys deps.constraints (set_rectangle field_tbl)
 ;;
 

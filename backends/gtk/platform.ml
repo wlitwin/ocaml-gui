@@ -185,9 +185,9 @@ module Windowing : PlatformSig.WindowingSig = struct
                 let img = context.backing_image.image in
                 let cr = Cairo.create img in
                 draw cr;
-                let cr = Cairo_gtk.create gtk_window#misc#window in
-                Cairo.set_source_surface cr img ~x:0. ~y:0.;
-                Cairo.paint cr;
+                let window_cr = Cairo_gtk.create gtk_window#misc#window in
+                Cairo.set_source_surface window_cr img ~x:0. ~y:0.;
+                Cairo.paint window_cr;
                 true
             );
         );

@@ -56,14 +56,14 @@ object(self)
                  top=bottomOf lbl 10.;
                  left=wLeft 10.;
                  right=leftOf lWidget2 ~-.10.;
-                 bottom=Mul [WBottom; Const 0.3];
+                 bottom=Mul [|WBottom; Const 0.3|];
             }};
             {input_item=lWidget2;
              input_loc={
                  top=bottomOf lbl 10.;
-                 left=Mul [WRight; Const 0.3];
+                 left=Mul [|WRight; Const 0.3|];
                  right=wRight ~-.10.;
-                 bottom=Mul [WBottom; Const 0.6];
+                 bottom=Mul [|WBottom; Const 0.6|];
             }};
             {input_item=lWidget3;
              input_loc={
