@@ -91,7 +91,7 @@ class ['a, 'b] textBoxWidget app = object(self)
 
     method updateCursor =
         let text = String.sub textObject#text 0 cursorLoc in
-        let size : Size.t = app#renderer#measureText (textObject#font, text) in
+        let size : Size.t = Rendering.measure_text(textObject#font, text) in
         cursorObject#setRect Rect.{x=rect.x+.size.w; y=rect.y; w=1.; h=rect.h}
 
     method! onFocused =

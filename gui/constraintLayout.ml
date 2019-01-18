@@ -267,7 +267,7 @@ object(self)
         layout rect deps
 
     initializer
-        renderObject#setContent (AddZ 1);
+        renderObject#setZIndex 1;
         DynArray.iter (fun item ->
             self#renderObject#attach item#renderObject
         ) items

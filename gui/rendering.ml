@@ -6,6 +6,7 @@ type draw_type = Stroke
 type text_data = {
     font : Font.t;
     text : string;
+    size : Size.t;
 }
 
 type shape_type = Rectangle of Size.t
@@ -21,7 +22,6 @@ type primitive = {
 type content = Translate of Pos.t
              | Group of (int * primitive list) list
              | Primitive of primitive
-             | AddZ of int
 
 type node = {
     parent : node option;
@@ -44,6 +44,11 @@ let stroke_rect (rect : Rect.t) color =
     mk_rect(rect, color, Stroke)
 ;;
 
+let measure_text (font, text) =
+    let metrics = Platform.Windowing.Graphics.measure_text_no_context(font, text) in
+    Size.{w=metrics.width; h=metrics.ascent+.metrics.descent}
+;;
+
 let fill_text text font color pos =
     {
         pos;
@@ -51,6 +56,7 @@ let fill_text text font color pos =
         shape_type = Text {
             font;
             text;
+            size=measure_text(font, text);
         };
         color;
     }
@@ -106,6 +112,46 @@ let group_prims prims =
     ) rect_tbl
 ;;
 
+type obj = < >
+
+class nodeObject renderer = object(self)
+    val mutable content = Group [0, []]
+    val mutable children : nodeObject DynArray.t = DynArray.make 1
+    val renderer = renderer
+    val mutable z_index = 0
+    val mutable parent : nodeObject option = None
+
+    method rect = Rect.empty
+
+    method zIndex = z_index
+    method setZIndex z = z_index <- z
+
+    method parent = parent
+    method setParent p = parent <- p
+
+    method content = content
+    method setContent c : unit = 
+        let old_rect = self#rect in
+        content <- c;
+        renderer#update ((self :> nodeObject), old_rect)
+
+    method children = children
+
+    method attach (obj : nodeObject) : unit  =
+        match obj#parent with
+        | None -> 
+            obj#setParent (Some (self :> nodeObject));
+            DynArray.add children obj
+        | Some p when phys_equal p (self :> nodeObject) -> ()
+        | Some p -> 
+            p#detach obj;
+            obj#setParent (Some (self :> nodeObject));
+
+    method detach (obj : nodeObject) =
+        obj#setParent None;
+        DynArray.filter (fun o -> not (phys_equal obj o)) children
+end
+
 let sort_tree root =
     let z_tbl : (int, primitive list) HP.t = HP.create() in
     let add_prims_by_z (z_index, pos, prims) =
@@ -117,17 +163,16 @@ let sort_tree root =
                 | Some lst -> HP.set z_tbl z_index (prim :: lst)
         )
     in
-    let rec traverse (z_index, pos : int * Pos.t) node =
+    let rec traverse (z_index, pos : int * Pos.t) (node : nodeObject) =
         let z_index = z_index + node#zIndex in
         match node#content with
-        | Translate amt -> List.iter node#children (traverse (z_index, Pos.add pos amt))
+        | Translate amt -> DynArray.iter (traverse (z_index, Pos.add pos amt)) node#children 
         | Group groups ->
             List.iter groups (fun (idx, prims) -> 
                 let z_index = z_index + idx in
                 add_prims_by_z (z_index, pos, prims);
             );
-            List.iter node#children (traverse (z_index, pos)) 
-        | AddZ amt -> List.iter node#children (traverse (z_index+amt, pos))
+            DynArray.iter (traverse (z_index, pos)) node#children 
         | Primitive primitive -> add_prims_by_z (z_index, pos, [primitive])
     in
     traverse (0, Pos.zero) root;
@@ -149,44 +194,44 @@ let sort_tree root =
 
 module Graphics = Platform.Windowing.Graphics
 
-let draw_tree cr tree =
+let draw_tree (cr, tree) =
     (*Stdio.printf "RENDER LIST IS %d IN LENGTH\n" (List.length tree);*)
     Array.iter tree (fun lst ->
         List.iter lst (function
             | TextList {draw_type=Stroke} -> failwith "Unsupported stroke text"
             | TextList {draw_type=Fill; font; color; text} ->
-                Util.timeit "TEXT LIST TIME" (fun _ ->
-                    Stdio.printf "TEXT LIST color %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length text);
+                (*Util.timeit "TEXT LIST TIME" (fun _ ->*)
+                    (*Stdio.printf "TEXT LIST color %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length text);*)
                     Graphics.set_color cr color;
                     Graphics.set_font_info cr font;
                     List.iter text (fun (pos, text) ->
                         Graphics.draw_text_ cr pos text
                         (*Graphics.draw_text cr font Rect.{x=pos.x; y=pos.y; w=0.; h=0.} text*)
                     )
-                )
+                (* ) *)
             | RectangleList {draw_type=Fill; color; rects} ->
-                Util.timeit "RECT LIST [F] TIME" (fun _ ->
-                    Stdio.printf "RECT LIST (F) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);
+                (*Util.timeit "RECT LIST [F] TIME" (fun _ ->*)
+                    (*Stdio.printf "RECT LIST (F) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);*)
                     Graphics.set_color cr color;
                     List.iter rects (fun r ->
                         Graphics.rectangle cr r;
                         Graphics.fill cr;
                     )
-                )
+                (* ) *)
             | RectangleList {draw_type=Stroke; color; rects} ->
-                Util.timeit "RECT LIST [S] TIME" (fun _ ->
-                    Stdio.printf "RECT LIST (S) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);
+                (*Util.timeit "RECT LIST [S] TIME" (fun _ ->*)
+                    (*Stdio.printf "RECT LIST (S) %.2f %.2f %.2f %d\n" color.r color.g color.b (List.length rects);*)
                     Graphics.set_color cr color;
                     List.iter rects (fun r ->
                         Graphics.rectangle cr r;
                         Graphics.stroke cr;
                     )
-                )
+                (* ) *)
     ))
 ;;
 
 let print_tree tree =
-    let rec print idnt node =
+    let rec print idnt (node : nodeObject) =
         let pad = String.make idnt ' ' in
         begin match node#content with
         | Group lst -> 
@@ -195,51 +240,58 @@ let print_tree tree =
             ) in
             Stdio.printf "%sGROUP [%d items]" pad items
         | Translate _ -> Stdio.printf "%sTranslate" pad
-        | AddZ amt -> Stdio.printf "%sAddZ %d" pad amt
         | Primitive {shape_type=Rectangle _} -> Stdio.printf "%sPrim[Rect]" pad
         | Primitive {shape_type=Text _} -> Stdio.printf "%sPrim[Text]" pad
         end;
-        Stdio.printf " -- with children %d\n" (List.length node#children);
-        List.iter node#children (print (idnt+2))
+        Stdio.printf " -- with children %d\n" (DynArray.length node#children);
+        DynArray.iter (print (idnt+2)) node#children 
     in
     print 0 tree;
 ;;
 
-let draw cr tree =
+let draw (cr, tree : Graphics.context * nodeObject) =
     print_tree tree;
     let tree, tree_time = Util.time (fun _ ->
         sort_tree tree
     ) in
     let _, draw_time = Util.time (fun _ ->
-        draw_tree cr tree
+        draw_tree (cr, tree)
     ) in
     tree_time, draw_time
 ;;
 
-class nodeObject renderer = object(self)
-    val mutable content = Group [0, []]
-    val mutable children : nodeObject list = []
-    val renderer = renderer
-    val mutable z_index = 0
+module Layer = struct
 
-    method rect = Rect.empty
+let calc_z obj =
+    let rec loop (obj, z_index) =
+        match obj#parent with
+        | None -> z_index
+        | Some p -> loop (p, z_index + p#zIndex)
+    in
+    loop (obj, 0)
+;;
 
-    method zIndex = z_index
-    method setZIndex z = z_index <- z
+let calc_rect (obj, rect) =
+    let rec loop (obj, rect) =
+        match obj#parent with
+        | None -> rect
+        | Some p ->
+            match p#content with
+            | Translate pos -> loop (p, Rect.({rect with x=rect.x+.pos.x; y=rect.y+.pos.y}))
+            | _ -> loop (p, rect)
+    in
+    loop (obj, rect)
+;;
 
-    method content = content
-    method setContent c : unit = 
-        content <- c;
-        renderer#update
+type layer = {
+    z_index : int;
+    prims : nodeObject DynArray.t;
+}
 
-    method children = children
+type render_state = {
+    layers : layer DynArray.t;
+}
 
-    method attach obj =
-        self#detach obj;
-        children <- obj :: children
-
-    method detach obj =
-        children <- List.filter children (fun o -> not (phys_equal obj o))
 end
 
 class groupObject renderer = object(self)
@@ -252,7 +304,7 @@ class primObject renderer = object(self)
     method private prim =
         match self#content with
         | Primitive prim -> prim
-        | _ -> failwith "Invalid"
+        | _ -> failwith "Invalid prim"
 
     method setColor color =
         self#setContent (Primitive {self#prim with color})
@@ -269,12 +321,10 @@ end
 class textObject renderer = object(self)
     inherit primObject renderer
 
-    val mutable size = Size.zero
-
     method private text_info =
         match self#prim.shape_type with
         | Text ti -> ti
-        | _ -> failwith "Invalid"
+        | _ -> failwith "Invalid text object"
 
     method text = self#text_info.text
     method font = self#text_info.font
@@ -282,25 +332,27 @@ class textObject renderer = object(self)
     method fontExtents : Font.font_extents =
         renderer#fontExtents self#font
 
+    method size = self#text_info.size
+
     method! rect =
         let prim = self#prim in
-        Rect.{x=prim.pos.x; y=prim.pos.y; w=size.w; h=size.h}
-
-    method size = size
+        let ascent = self#fontExtents.ascent in
+        let size = self#text_info.size in
+        Rect.{x=prim.pos.x; y=prim.pos.y-.ascent; w=size.w; h=size.h}
 
     method setText text =
         let ti = self#text_info in
-        size <- renderer#measureText(ti.font, ti.text);
-        self#setContent (Primitive {self#prim with shape_type=Text {ti with text}})
+        let size = measure_text(ti.font, text) in
+        self#setContent (Primitive {self#prim with shape_type=Text {ti with text; size}});
 
     method setFont font =
         self#setContent (Primitive {self#prim with shape_type=Text {self#text_info with font}})
 
     initializer
-        self#setContent (Primitive {
+        content <- (Primitive {
             pos=Pos.zero;
             draw_type=Fill;
-            shape_type=Text {text=""; font=Font.default_font};
+            shape_type=Text {text=""; font=Font.default_font; size=Size.zero};
             color=Color.black;
         })
 end
@@ -330,7 +382,7 @@ class rectObject renderer = object(self)
         })
     
     initializer
-        self#setContent (Primitive {
+        content <- (Primitive {
             pos=Pos.zero;
             draw_type=Fill;
             shape_type=Rectangle Size.{w=100.; h=100.};
@@ -338,21 +390,33 @@ class rectObject renderer = object(self)
         })
 end
 
+module Dirty = struct
+type t = NotDirty
+       | SingleUpdate of nodeObject * Rect.t
+       | RenderAll
+
+let is_dirty = function
+    | NotDirty -> false
+    | _ -> true
+end
+
 class renderer = object(self)
-    val mutable root = new nodeObject (object method update = () end)
+    val mutable root = new nodeObject (object method update _ = () end)
     val mutable requestDraw : unit -> unit = fun _ -> ()
     val mutable immediateUpdates = true
+    val mutable dirty = true
+    val mutable fullRefresh = false
+    val mutable updates : (Rect.t * Rect.t) DynArray.t = DynArray.make 10
 
     method setRoot r = root <- r
     method root = root
 
     method setImmediateUpdates p = immediateUpdates <- p
     method pause = immediateUpdates <- false
-    method resume = immediateUpdates <- true
-
-    method measureText (font, text) =
-        let metrics = Graphics.measure_text_no_context(font, text) in
-        Size.{w=metrics.width; h=metrics.ascent+.metrics.descent}
+    method resume = 
+        immediateUpdates <- true;
+        fullRefresh <- true;
+        requestDraw()
 
     method fontExtents font : Font.font_extents =
         Graphics.font_extents_no_context font
@@ -361,7 +425,14 @@ class renderer = object(self)
     method createRectObject = new rectObject self
     method createGroupObject = new groupObject self
 
-    method update = requestDraw()
+    method update (obj, old_rect) =
+        if immediateUpdates then begin
+            dirty <- true;
+            let rect = Layer.calc_rect (obj, obj#rect)
+            and old_rect = Layer.calc_rect (obj, old_rect) in
+            DynArray.add updates (rect, old_rect);
+            requestDraw()
+        end
 
     method setRequestDraw f =
         requestDraw <- f
@@ -375,13 +446,46 @@ class renderer = object(self)
     val mutable size = Size.zero
     method setSize s = size <- s
 
+    method private drawStats (cr, t1, t2) =
+        Graphics.set_color cr Color.gray;
+        Graphics.rectangle cr Rect.{x=0.; y=size.h-.17.; w=200.; h=size.h};
+        Graphics.fill cr;
+        let text = Printf.sprintf "S %.3fms D %.3fms" t1 t2 in
+        Graphics.set_color cr Color.black;
+        Graphics.set_font_info cr stat_font;
+        Graphics.draw_text_ cr Pos.{x=0.; y=size.h -. 2.} text;
+
     method render cr =
-        if immediateUpdates then (
-            let sort_time, draw_time =  draw cr root in
-            let text = Printf.sprintf "S %.3fms D %.3fms" sort_time draw_time in
-            Graphics.set_font_info cr stat_font;
-            Graphics.draw_text_ cr Pos.{x=0.; y=size.h -. 2.} text;
-        )
+        (*let draw_debug_rects (cr, rect, old_rect) =
+            Graphics.set_color cr Color.{r=Random.float 1.; g=Random.float 1.; b=Random.float 1.; a=1.};
+            Graphics.rectangle cr old_rect;
+            Graphics.fill cr;
+            Graphics.set_color cr Color.{r=Random.float 1.; g=Random.float 1.; b=Random.float 1.; a=1.};
+            Graphics.rectangle cr rect;
+            Graphics.fill cr;
+        in*)
+        if immediateUpdates then begin
+            if fullRefresh then (
+                Stdio.printf "FULL REFRESH!\n%!";
+                let s, t = draw(cr, root) in
+                self#drawStats(cr, s, t);
+                fullRefresh <- false;
+                dirty <- false;
+            ) else if dirty then (
+                DynArray.iter (fun (rect, old_rect : Rect.t * Rect.t) ->
+                    let tree, sort_time = Util.time (fun _ -> sort_tree root) in
+                    Graphics.clip_rect cr old_rect;
+                    let _, draw_time1 = Util.time (fun _ -> draw_tree(cr, tree)) in
+                    Graphics.clip_reset cr;
+                    Graphics.clip_rect cr rect;
+                    let _, draw_time2 = Util.time (fun _ -> draw_tree(cr, tree)) in
+                    Graphics.clip_reset cr;
+                    self#drawStats (cr, sort_time, draw_time1+.draw_time2);
+                ) updates;
+                DynArray.clear updates;
+                dirty <- false;
+            )
+        end
 end
 
 (*
