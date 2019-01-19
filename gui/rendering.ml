@@ -141,15 +141,15 @@ class nodeObject renderer = object(self)
         match obj#parent with
         | None -> 
             obj#setParent (Some (self :> nodeObject));
-            DynArray.add children obj
+            DynArray.add children obj;
         | Some p when phys_equal p (self :> nodeObject) -> ()
         | Some p -> 
             p#detach obj;
             obj#setParent (Some (self :> nodeObject));
 
-    method detach (obj : nodeObject) =
+    method detach (obj : nodeObject) : unit =
         obj#setParent None;
-        DynArray.filter (fun o -> not (phys_equal obj o)) children
+        DynArray.filter (fun o -> not (phys_equal obj o)) children;
 end
 
 let sort_tree root =
@@ -408,8 +408,9 @@ class renderer = object(self)
     val mutable fullRefresh = false
     val mutable updates : (Rect.t * Rect.t) DynArray.t = DynArray.make 10
 
-    method setRoot r = root <- r
     method root = root
+    method setRoot r = 
+        root <- r;
 
     method setImmediateUpdates p = immediateUpdates <- p
     method pause = immediateUpdates <- false
@@ -465,22 +466,22 @@ class renderer = object(self)
             Graphics.fill cr;
         in*)
         if immediateUpdates then begin
+            let sortTree, sortTime = Util.time (fun _ -> sort_tree root) in
             if fullRefresh then (
                 Stdio.printf "FULL REFRESH!\n%!";
-                let s, t = draw(cr, root) in
-                self#drawStats(cr, s, t);
+                let _, t = Util.time (fun _ -> draw_tree(cr, sortTree)) in
+                self#drawStats(cr, sortTime, t);
                 fullRefresh <- false;
                 dirty <- false;
             ) else if dirty then (
                 DynArray.iter (fun (rect, old_rect : Rect.t * Rect.t) ->
-                    let tree, sort_time = Util.time (fun _ -> sort_tree root) in
                     Graphics.clip_rect cr old_rect;
-                    let _, draw_time1 = Util.time (fun _ -> draw_tree(cr, tree)) in
+                    let _, draw_time1 = Util.time (fun _ -> draw_tree(cr, sortTree)) in
                     Graphics.clip_reset cr;
                     Graphics.clip_rect cr rect;
-                    let _, draw_time2 = Util.time (fun _ -> draw_tree(cr, tree)) in
+                    let _, draw_time2 = Util.time (fun _ -> draw_tree(cr, sortTree)) in
                     Graphics.clip_reset cr;
-                    self#drawStats (cr, sort_time, draw_time1+.draw_time2);
+                    self#drawStats (cr, sortTime, draw_time1+.draw_time2);
                 ) updates;
                 DynArray.clear updates;
                 dirty <- false;

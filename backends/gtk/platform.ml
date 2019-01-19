@@ -138,7 +138,19 @@ module Windowing : PlatformSig.WindowingSig = struct
         ) else key
     ;;
 
-    let fix_key context (key : GdkEvent.Key.t) = 
+    let fix_key (context, key : context * GdkEvent.Key.t) = 
+        let modifiers = GdkEvent.Key.state key in
+        context.special_keys.ctrlDown <- false;
+        context.special_keys.shiftDown <- false;
+        context.special_keys.altDown <- false;
+        context.special_keys.superDown <- false;
+        List.iter modifiers (function
+            | `SHIFT -> context.special_keys.shiftDown <- true
+            | `SUPER -> context.special_keys.superDown <- true
+            | `MOD1 -> context.special_keys.ctrlDown <- true
+            | `MOD4 -> context.special_keys.altDown <- true
+            | _ -> ()
+        );
         normalize_key context (GdkEvent.Key.keyval key)
         |> Keys.of_code
     ;;
@@ -193,12 +205,12 @@ module Windowing : PlatformSig.WindowingSig = struct
         );
         ignore(gtk_window#connect#destroy GMain.quit);
         ignore(gtk_window#event#connect#key_press (fun key -> 
-            keyPress (fix_key context key);
+            keyPress (fix_key (context, key));
             true
             );
         );
         ignore(gtk_window#event#connect#key_release (fun key -> 
-            keyRelease (fix_key context key);
+            keyRelease (fix_key (context, key));
             true));
         ignore(gtk_window#event#connect#configure (fun evt -> 
                 let module GC = GdkEvent.Configure in

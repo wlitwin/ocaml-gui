@@ -86,6 +86,8 @@ class ['a, 'b] textBoxWidget app = object(self)
         | Keys.A when app#specialKeys.ctrlDown -> self#moveCursorToBeginning
         | Keys.E when app#specialKeys.ctrlDown -> self#moveCursorToEnd
         | Keys.W when app#specialKeys.ctrlDown -> self#deleteWordBehindCursor
+        | key when Keys.is_printable key && app#specialKeys.shiftDown -> 
+                self#insertAtCursor (Keys.to_string key |> String.uppercase)
         | key when Keys.is_printable key -> self#insertAtCursor (Keys.to_string key)
         | _ -> ());
 
