@@ -3,7 +3,7 @@ object(self)
     inherit ['a, 'b] Widget.basicWidget app as super
     (* inherit Mixins.scroller super as scroll *)
     (* inherit Mixins.layouter scroll as layout *)
-    val v_layout = new VerticalLayout.verticalLayout
+    val v_layout = new VerticalLayout.verticalLayout app#renderer
 
     method setContents (lst : ('a, 'b) Layoutable.layoutable list) : unit =
         v_layout#clear;

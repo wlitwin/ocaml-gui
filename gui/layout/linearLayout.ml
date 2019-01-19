@@ -1,4 +1,4 @@
-class virtual ['a, 'b] linearLayout =
+class virtual ['a, 'b] linearLayout renderer =
 object(self)
     inherit ['a, 'b] Layout.layout
     val id = 0
@@ -8,16 +8,25 @@ object(self)
     val mutable eventHandlers = []
     val mutable snoopers = []
     val mutable distributeEvenly = true
+    val renderObject = renderer#createGroupObject
 
     val events = HandlesEvent.create()
 
     method clear = DynArray.clear items
     method setDistributeEvenly b = distributeEvenly <- b
 
-    method addLayoutable l = DynArray.add items (l :> ('a, 'b) Layoutable.layoutable)
+    method addLayoutable l = 
+        DynArray.add items (l :> ('a, 'b) Layoutable.layoutable);
+        renderObject#attach l#renderObject
 
     method removeLayoutable id =
-        DynArray.filter (fun l -> l#id <> id) items
+        DynArray.filter (fun l -> 
+            if l#id <> id then true
+            else (
+                renderObject#detach l#renderObject;
+                false
+            )
+        ) items;
 
     method items = items 
 
@@ -27,5 +36,8 @@ object(self)
     method layout rect =
         if distributeEvenly then self#ratioLayout rect
         else self#preferredLayout rect
+
+    initializer
+        renderObject#setZIndex 1;
 end
 

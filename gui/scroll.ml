@@ -10,6 +10,7 @@ class ['a, 'b] scrollBar app scrollType = object(self)
     val barSize = 10.
     val scrollType = scrollType
     val mutable ratio = 1.
+    val scrollBar = app#renderer#createRectObject
 
     method setPosition (p : float) : unit =
         pos <- Util.clamp p 0. 1.
@@ -20,39 +21,36 @@ class ['a, 'b] scrollBar app scrollType = object(self)
     method setRatio new_ratio = ratio <- new_ratio
 
     method incrPos amt =
-        self#setPosition (self#position +. amt)
+        self#setPosition (self#position +. amt);
+        self#updateBar
 
     method decrPos amt =
-        self#setPosition (self#position -. amt)
+        self#setPosition (self#position -. amt);
+        self#updateBar
 
-    method private paintVertical cr =
+    method private updateBar =
         let open Float in
-        let barHeight = min (ratio *. rect.h) rect.h in
-        Graphics.set_color cr Color.black;
-        let y = rect.y +. pos *. (rect.h -. barHeight) in
-        Graphics.rectangle cr Rect.{x=rect.x; y; w=barSize; h=barHeight};
-        Graphics.fill cr
-
-    method private paintHorizontal cr =
-        let open Float in
-        let barWidth  = min (ratio *. rect.w) rect.w in
-        Graphics.set_color cr Color.black;
-        let x = rect.x +. pos *. (rect.w -. barWidth) in
-        Graphics.rectangle cr Rect.{x; y=rect.y; w=barWidth; h=barSize};
-        Graphics.fill cr
-
-    method! onDraw cr =
-        if Float.(ratio < 1.) then
-            super#onDraw cr
-
-    method! paint cr =
-        Graphics.clip_reset cr;
-        Graphics.set_color cr Color.white;
-        Graphics.rectangle cr rect;
-        Graphics.fill cr;
         match scrollType with
-        | VerticalScroller -> self#paintVertical cr
-        | HorizontalScroller -> self#paintHorizontal cr
+        | VerticalScroller ->
+            let barHeight = min (ratio *. rect.h) rect.h in
+            let y = rect.y +. pos *. (rect.h -. barHeight) in
+            scrollBar#setRect Rect.{x=rect.x; y; w=barSize; h=barHeight};
+        | HorizontalScroller -> 
+            let barWidth  = min (ratio *. rect.w) rect.w in
+            let x = rect.x +. pos *. (rect.w -. barWidth) in
+            scrollBar#setRect Rect.{x; y=rect.y; w=barWidth; h=barSize};
+
+    method! onResize r =
+        super#onResize r;
+        self#updateBar
+
+    initializer
+        self#setBGColor Color.white;
+        scrollBar#setColor Color.black;
+        scrollBar#setZIndex 3;
+        renderObject#setZIndex 2;
+        renderObject#attach (scrollBar :> Rendering.nodeObject);
+        self#updateBar;
 end
 
 class ['a, 'b] scrollArea app cont =
@@ -64,9 +62,12 @@ object(self)
     val mutable vert = true
     val vertScroller = new scrollBar app VerticalScroller
     val horzScroller = new scrollBar app HorizontalScroller
+    val translation = app#renderer#createTranslateObject
 
-    method setControl c =
-        cont <- c
+    method setControl c : unit =
+        translation#detach cont#renderObject;
+        cont <- c;
+        translation#attach cont#renderObject;
 
     method! onKeyDown k =
         let ratio, fn = 
@@ -85,7 +86,10 @@ object(self)
             | _ -> 1.0, fun _ -> ()
         in
         fn ratio;
-        self#invalidate;
+        self#updateTranslation
+
+    method private updateTranslation =
+        translation#setTranslation (rect.x -. self#offsetX, rect.y -. self#offsetY)
 
     method! onResize r =
         super#onResize r |> ignore;
@@ -103,6 +107,15 @@ object(self)
                                   y=rect.y; h=rect.h; w=barSizeW};
         horzScroller#resize Rect.{x=rect.x;
                                   y=rect.y +. rect.h -. barSizeH; h=barSizeH; w=rect.w};
+        self#updateScrollbarVisibility
+
+    method private updateScrollbarVisibility =
+        let updateBar b =
+            if Float.(b#ratio < 1.0) then renderObject#attach b#renderObject
+            else renderObject#detach b#renderObject
+        in
+        updateBar vertScroller;
+        updateBar horzScroller;
 
     method ensureVisible (region : Rect.t) =
         let open Float in
@@ -135,12 +148,9 @@ object(self)
     method! contentSize =
         cont#preferredSize
 
-    method! paint cr =
-        let ox = self#offsetX
-        and oy = self#offsetY in
-        Graphics.translate cr (rect.x -. ox) (rect.y -. oy);
-        cont#onDraw cr;
-        Graphics.identity_transform cr;
-        vertScroller#onDraw cr;
-        horzScroller#onDraw cr;
+    initializer
+        translation#setZIndex 1;
+        translation#attach cont#renderObject;
+        renderObject#detach (bgRect :> Rendering.nodeObject);
+        renderObject#attach (translation :> Rendering.nodeObject);
 end

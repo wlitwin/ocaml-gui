@@ -64,7 +64,7 @@ object(self)
             {input_item=tPath; input_loc={top=wTop 10.; left=rightOf lPath 10.; right=wRight ~-.10.; bottom=preferredH tPath}};
             {input_item=lScroll; input_loc={top=bottomOf tPath 10.; left=wLeft 10.; right=wRight ~-.10.; bottom=wBottom ~-.10.}};
         ])) in
-        let layout = new ConstraintLayout.constraintLayout rules in
+        let layout = new ConstraintLayout.constraintLayout rules app#renderer in
         self#setLayout (layout :> ('a, 'b) Layout.layout)
 
     inherit ['a, 'b] Focusable.focusManager app [(txtPath :> ('a, 'b) HandlesEvent.handles_event);

@@ -107,9 +107,9 @@ class ['a, 'b] textBoxWidget app = object(self)
         border#setRect rect;
         let fe : Font.font_extents = textObject#fontExtents in
         textObject#setPos Pos.{x=rect.x; y=rect.y+.fe.Font.ascent};
+        self#updateCursor
 
     initializer
-        textObject#setText "";
         self#setBGColor Color.white;
         border#setMode Rendering.Stroke;
         border#setColor Color.black;

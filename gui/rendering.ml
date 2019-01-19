@@ -142,6 +142,7 @@ class nodeObject renderer = object(self)
         | None -> 
             obj#setParent (Some (self :> nodeObject));
             DynArray.add children obj;
+            renderer#update ((obj :> nodeObject), obj#rect)
         | Some p when phys_equal p (self :> nodeObject) -> ()
         | Some p -> 
             p#detach obj;
@@ -150,6 +151,7 @@ class nodeObject renderer = object(self)
     method detach (obj : nodeObject) : unit =
         obj#setParent None;
         DynArray.filter (fun o -> not (phys_equal obj o)) children;
+        renderer#update ((obj :> nodeObject), obj#rect)
 end
 
 let sort_tree root =
@@ -390,6 +392,14 @@ class rectObject renderer = object(self)
         })
 end
 
+class translateObject renderer = object(self)
+    inherit nodeObject renderer
+
+    method setTranslation (x, y) : unit =
+        self#setContent (Translate Pos.{x; y});
+        renderer#resume
+end
+
 module Dirty = struct
 type t = NotDirty
        | SingleUpdate of nodeObject * Rect.t
@@ -425,6 +435,7 @@ class renderer = object(self)
     method createTextObject = new textObject self
     method createRectObject = new rectObject self
     method createGroupObject = new groupObject self
+    method createTranslateObject = new translateObject self
 
     method update (obj, old_rect) =
         if immediateUpdates then begin
@@ -488,12 +499,3 @@ class renderer = object(self)
             )
         end
 end
-
-(*
-let _ =
-    let renderer = new renderer in
-    let top = new nodeObject in
-    let text = new textObject in
-    let rect = new rectObject in
-    ()
-    *)

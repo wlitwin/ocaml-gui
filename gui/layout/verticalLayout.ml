@@ -1,6 +1,6 @@
-class ['a, 'b] verticalLayout =
+class ['a, 'b] verticalLayout renderer =
 object(self)
-    inherit ['a, 'b] LinearLayout.linearLayout
+    inherit ['a, 'b] LinearLayout.linearLayout renderer
 
     method preferredSize =
         DynArray.fold_left 
