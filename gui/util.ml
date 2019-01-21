@@ -60,3 +60,45 @@ let array_concat arr =
         out
     end
 ;;
+
+let dynarray_sort (arr, cmp) =
+    let get = DynArray.get arr in
+    let set (idx, v) = DynArray.set arr idx v in
+    let swap(i, j) =
+        let tmp = get i in
+        set (i, (get j));
+        set (j, tmp);
+    in
+    let incr r = r := !r + 1 in
+    let decr r = r := !r - 1 in
+    let partition (lo, hi) =
+        let pivot = get ((lo + hi)/2) in
+        let i = ref (lo - 1)
+        and j = ref (hi + 1) in
+        let rec loop() =
+            incr i;
+            while cmp(get !i, pivot) < 0 do
+                incr i;
+            done;
+            decr j;
+            while cmp(get !j, pivot) > 0 do
+                decr j;
+            done;
+            if !i >= !j then
+                !j
+            else (
+                swap(!i, !j);
+                loop();
+            )
+        in
+        loop()
+    in
+    let rec quicksort (lo, hi) =
+        if lo < hi then
+            let p = partition(lo, hi) in
+            quicksort(lo, p);
+            quicksort(p+1, hi);
+    in
+    quicksort(0, DynArray.length arr)
+;;
+

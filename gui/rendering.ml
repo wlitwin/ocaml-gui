@@ -1,5 +1,7 @@
 (* TODO figure out how to use JaneStreet's Incremental library for this *)
 
+module R = Rtree
+
 type draw_type = Stroke
                | Fill
 

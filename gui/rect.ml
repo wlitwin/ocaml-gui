@@ -40,6 +40,17 @@ let intersection r1 r2 =
     |> RectAabb.rect_of_aabb
 ;;
 
+let overlaps (r1, r2) =
+    if Float.(r1.y < (r2.y + r2.h)
+        || (r1.y + r1.h) > r2.y) then false
+    else
+        Float.((r1.x + r1.w) < r2.x
+                || r1.x > (r2.x + r2.w))
+   
+;;
+
+let area r = r.w*.r.h
+
 (* Is r1 inside r2? *)
 let inside r1 r2 =
     Aabb.inside (RectAabb.aabb_of_rect r1)
