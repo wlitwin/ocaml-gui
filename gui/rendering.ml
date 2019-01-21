@@ -1,6 +1,6 @@
 (* TODO figure out how to use JaneStreet's Incremental library for this *)
 
-module R = Rtree
+module R = Test_rtree
 
 type draw_type = Stroke
                | Fill
