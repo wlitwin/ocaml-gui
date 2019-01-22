@@ -19,11 +19,16 @@ let create () = {
 }
 
 let min_child_size = 2
-let max_child_size = 10
+let max_child_size = 4
 
 let bounds = function
     | Leaf l -> l.bounds
     | Node n -> n.bounds
+;;
+
+let set_parent p = function
+    | Leaf l -> l.parent <- Some p
+    | Node n -> n.parent <- Some p
 ;;
 
 let bounding_box_of_array (nodes, bounds) =
@@ -59,7 +64,7 @@ let enlargement_amount (rect1, rect2) =
 ;;
 
 let choose_leaf (tree, rect) =
-    let scratch = DynArray.make max_child_size in
+    let scratch = DynArray.create ~capacity:max_child_size () in
     let cmp(((enlarge1, area1), node1),
             ((enlarge2, area2), node2)) =
         let cmp1 = Float.to_int (enlarge1 -. enlarge2) in
@@ -94,7 +99,7 @@ let pick_seeds (nodes, bounds) =
         let total_rect = Rect.union rect1 rect2 in
         (Rect.area total_rect) -. (Rect.area rect1) -. (Rect.area rect2)
     in
-    let best_area = ref Float.max_value in
+    let best_area = ref Float.min_value in
     let best_pair = ref (0, 0) in
     let len = DynArray.length nodes in
     for i=0 to len-1 do
@@ -108,6 +113,8 @@ let pick_seeds (nodes, bounds) =
             )
         done; 
     done;
+    let i, j = !best_pair in
+    Stdio.printf "BEST PAIR %d %d\n" i j;
     !best_pair
 ;;
 
@@ -172,12 +179,12 @@ let split_quadratic node =
     assert (has_too_many_children node);
     let do_split (get, arr, bounds, create) =
         let idx1, idx2 = pick_seeds (arr, bounds) in
-        let group1 = DynArray.make max_child_size in
-        let group2 = DynArray.make max_child_size in
+        let group1 = DynArray.create ~capacity:max_child_size () in
+        let group2 = DynArray.create ~capacity:max_child_size () in
         DynArray.add group1 (get idx1);
         DynArray.add group2 (get idx2);
         DynArray.delete arr idx1;
-        DynArray.delete arr idx2;
+        DynArray.delete arr (if idx2 > idx1 then idx2-1 else idx2);
         let bounds1, bounds2 = pick_all (group1, group2, bounds, arr) in
         let parent, new_obj = create(group1, bounds1, group2, bounds2) in
         begin match parent with
@@ -208,6 +215,9 @@ let split_quadratic node =
                 bounds=b2;
                 children=g2;
             } in
+            DynArray.iter (fun obj ->
+                set_parent n_new obj
+            ) g2;
             n.bounds <- b1;
             n.children <- g1;
             n.parent, n_new
@@ -233,14 +243,17 @@ let rec root_of = function
 
 let rec adjust_tree (l, ll) =
     let create_new_root (l, ll, bounds1, bounds2) =
-        let children = DynArray.make max_child_size in
+        let children = DynArray.create ~capacity:max_child_size () in
         DynArray.add children l;
         DynArray.add children ll;
-        Some (Node {
+        let new_root = Node {
             parent=None;
             bounds = Rect.union bounds1 bounds2;
             children;
-        })
+        } in
+        set_parent new_root l;
+        set_parent new_root ll;
+        Some new_root
     in
     let add_to_parent = function 
     | (Node p as parent, bounds) ->
@@ -271,7 +284,7 @@ let rec adjust_tree (l, ll) =
 let insert (tree, rect, obj) : unit =
     match tree.root with
     | None ->
-        let arr = DynArray.make max_child_size in
+        let arr = DynArray.create ~capacity:max_child_size () in
         DynArray.add arr (rect, obj);
         tree.root <- Some (Leaf {
             parent=None;
@@ -286,10 +299,15 @@ let insert (tree, rect, obj) : unit =
             DynArray.add data.data (rect, obj);
             data.bounds <- Rect.union data.bounds rect;
             if too_many_children data.data then (
+                let a, b = split_node node in
+                let new_root = adjust_tree (a, b) in
+                tree.root <- new_root;
+                (*
                 tree.root <-
                     node
                     |> split_node
                     |> adjust_tree
+                    *)
             ) else (
                 (* Walk up the tree updating all parents bounds *)
                 fixup_parent_rects data.bounds data.parent
@@ -317,11 +335,17 @@ let rec find_leaf (node, rect, pred) : (int * 'a tree) option =
             else None
         )
     | Node {bounds; children} ->
-        if Rect.overlaps (bounds, rect) then
+            let open Rect in
+        Stdio.printf "here %f %f %f %f - %f %f %f %f\n"
+        bounds.x bounds.y bounds.w bounds.h
+        rect.x rect.y rect.w rect.h;
+        Stdio.printf "OVERLAPS %b\n" (Rect.overlaps (bounds, rect));
+        if Rect.overlaps (bounds, rect) then (
+            Stdio.printf "overlaps\n";
             until (children, fun (_, node) ->
                 find_leaf (node, rect, pred)
             )
-        else
+        ) else
             None
 ;;
 
@@ -398,19 +422,27 @@ let insert_eliminations (tree, eliminations) =
                 )
             in
             drill (diff, root)
-        | _ -> failwith "Cannot be called with leaf"
-    in
-    DynArray.iter (function
-        | Leaf {data} ->
+        | Leaf {data} -> 
             DynArray.iter (fun (rect, obj) ->
-                insert (tree, rect, obj)
+                insert (tree, rect, obj);
             ) data
+    in
+    let len = DynArray.length eliminations in
+    for i=0 to len-1 do
+        match DynArray.get eliminations i with 
+        | Leaf _ as leaf -> insert_node leaf
         | Node {children} ->
             DynArray.iter (fun child ->
                 (* Just add to parent who has same depth *)
-                insert_node child
+                insert_node child;
             ) children
+
+    done;
+    (*
+    DynArray.iter (fun item ->
+        Stdio.printf "ITER\n%!";
     ) eliminations;
+    *)
 ;;
 
 let shrink_tree tree =
@@ -419,30 +451,42 @@ let shrink_tree tree =
     | Some (Leaf {data}) when DynArray.empty data ->
         tree.root <- None
     | Some (Node {children}) when DynArray.length children = 1 ->
-        tree.root <- Some (DynArray.get children 0)
+        let child = DynArray.get children 0 in
+        begin match child with
+        | Leaf l -> l.parent <- None
+        | Node n -> n.parent <- None
+        end;
+        tree.root <- Some child
     | _ -> ()
 ;;
 
 let condense_tree (tree, leaf) =
-    let eliminations = DynArray.make 5 in
+    let eliminations = DynArray.create ~capacity:5 () in
     let rec loop leaf =
-        let eliminate (node, parent, children) =
-            DynArray.add eliminations node;
+        let eliminate (parent, children) =
+            DynArray.add eliminations leaf;
             shrink_bounds parent;
-            DynArray.filter (fun item -> phys_equal item leaf) children;
+            let before = DynArray.length children in
+            DynArray.filter (fun item -> not (phys_equal item leaf)) children;
+            let after = DynArray.length children in
+            Stdio.printf "BEFORE %d AFTER %d\n%!" before after;
+            assert (after = before - 1 || after = before);
             loop parent;
         in
         match leaf with
         | Leaf {parent=None}
         | Node {parent=None} -> ()
         | Node ({parent=Some (Node p as parent)} as n) when too_few_children n.children ->
+            Stdio.printf "Eliminate node\n%!";
             n.parent <- None;
-            eliminate (leaf, parent, p.children);
+            eliminate (parent, p.children);
         | Leaf ({parent=Some (Node p as parent); data} as l) when too_few_children data ->
+            Stdio.printf "Eliminate leaf\n%!";
             l.parent <- None;
-            eliminate (leaf, parent, p.children);
+            eliminate (parent, p.children);
         | Node {parent=Some (Node _)}
         | Leaf {parent=Some (Node _)} ->
+            Stdio.printf "Condense parent rects\n%!";
             condense_parent_rects (Some leaf)
         | _ -> failwith "impossible condense_tree"
     in
@@ -458,6 +502,7 @@ let delete (tree, rect, pred) =
         match find_leaf (root, rect, pred) with
         | None -> ()
         | Some (idx, (Leaf l as leaf)) ->
+            Stdio.printf "Found node to delete\n%!";
             DynArray.delete l.data idx;
             shrink_bounds leaf;
             condense_tree (tree, leaf);

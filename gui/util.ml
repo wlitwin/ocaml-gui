@@ -84,9 +84,9 @@ let dynarray_sort (arr, cmp) =
             while cmp(get !j, pivot) > 0 do
                 decr j;
             done;
-            if !i >= !j then
+            if !i >= !j then (
                 !j
-            else (
+            ) else (
                 swap(!i, !j);
                 loop();
             )
@@ -94,11 +94,13 @@ let dynarray_sort (arr, cmp) =
         loop()
     in
     let rec quicksort (lo, hi) =
-        if lo < hi then
+        if lo < hi then (
             let p = partition(lo, hi) in
             quicksort(lo, p);
             quicksort(p+1, hi);
+        )
     in
-    quicksort(0, DynArray.length arr)
+    if DynArray.length arr > 1 then
+        quicksort(0, DynArray.length arr - 1)
 ;;
 

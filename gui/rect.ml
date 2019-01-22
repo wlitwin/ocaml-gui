@@ -41,11 +41,11 @@ let intersection r1 r2 =
 ;;
 
 let overlaps (r1, r2) =
-    if Float.(r1.y < (r2.y + r2.h)
-        || (r1.y + r1.h) > r2.y) then false
+    if Float.(r1.y > (r2.y + r2.h)
+        || (r1.y + r1.h) < r2.y) then false
     else
-        Float.((r1.x + r1.w) < r2.x
-                || r1.x > (r2.x + r2.w))
+        not (Float.(r1.x > (r2.x + r2.h)
+                || (r1.x + r1.w) < r2.x))
    
 ;;
 

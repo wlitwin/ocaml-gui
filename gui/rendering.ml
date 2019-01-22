@@ -118,7 +118,7 @@ type obj = < >
 
 class nodeObject renderer = object(self)
     val mutable content = Group [0, []]
-    val mutable children : nodeObject DynArray.t = DynArray.make 1
+    val mutable children : nodeObject DynArray.t = DynArray.create ~capacity:1 ()
     val renderer = renderer
     val mutable z_index = 0
     val mutable parent : nodeObject option = None
@@ -418,7 +418,7 @@ class renderer = object(self)
     val mutable immediateUpdates = true
     val mutable dirty = true
     val mutable fullRefresh = false
-    val mutable updates : (Rect.t * Rect.t) DynArray.t = DynArray.make 10
+    val mutable updates : (Rect.t * Rect.t) DynArray.t = DynArray.create ~capacity:10 ()
 
     method root = root
     method setRoot r = 
