@@ -39,7 +39,7 @@ object(self)
         let cl (i : ('a, 'b) #Layoutable.layoutable) = (i :> ('a, 'b) Layoutable.layoutable) in
         let widget1 = new Widget.basicWidget app in
         let widget2 = new Widget.basicWidget app in
-        let widget3 = (*new Widget.basicWidget app in*) new tree_drawing app in
+        let widget3 = new Widget.basicWidget app in (*new tree_drawing app in *)
         let widget4 = new Widget.basicWidget app in
         let lWidget1 = cl widget1 in
         let lWidget2 = cl widget2 in

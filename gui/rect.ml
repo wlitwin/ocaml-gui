@@ -49,6 +49,9 @@ let overlaps (r1, r2) =
    
 ;;
 
+let is_empty {w; h} =
+    Float.(w <= 0. || h <= 0.)
+
 let area r = r.w*.r.h
 
 (* Is r1 inside r2? *)

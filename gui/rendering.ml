@@ -128,6 +128,13 @@ class nodeObject renderer = object(self)
     method zIndex = z_index
     method setZIndex z = z_index <- z
 
+    method fullZIndex =
+        let rec loop idx = function
+            | None -> idx
+            | Some p -> loop (idx + p#zIndex) p#parent
+        in
+        loop z_index parent
+
     method parent = parent
     method setParent p = parent <- p
 
@@ -135,25 +142,38 @@ class nodeObject renderer = object(self)
     method setContent c : unit = 
         let old_rect = self#rect in
         content <- c;
-        renderer#update ((self :> nodeObject), old_rect)
+        renderer#removeObject (self :> nodeObject);
+        renderer#refreshChanged ((self :> nodeObject), old_rect);
+        renderer#addObject (self :> nodeObject);
 
     method children = children
 
+    method toString = ""
+
     method attach (obj : nodeObject) : unit  =
-        match obj#parent with
-        | None -> 
-            obj#setParent (Some (self :> nodeObject));
-            DynArray.add children obj;
-            renderer#update ((obj :> nodeObject), obj#rect)
-        | Some p when phys_equal p (self :> nodeObject) -> ()
-        | Some p -> 
-            p#detach obj;
-            obj#setParent (Some (self :> nodeObject));
+        renderer#groupUpdates (fun _ ->
+            match obj#parent with
+            | None -> 
+                obj#setParent (Some (self :> nodeObject));
+                DynArray.add children obj;
+                renderer#addObject (obj :> nodeObject);
+                renderer#refreshChanged ((obj :> nodeObject), obj#rect)
+            | Some p when phys_equal p (self :> nodeObject) -> ()
+            | Some p -> 
+                p#detach obj;
+                renderer#removeObject (obj :> nodeObject);
+                obj#setParent (Some (self :> nodeObject));
+        );
+
+    method draw (cr : Platform.Windowing.Graphics.context) : unit =
+        DynArray.iter (fun child ->
+            child#draw cr
+        ) children
 
     method detach (obj : nodeObject) : unit =
         obj#setParent None;
         DynArray.filter (fun o -> not (phys_equal obj o)) children;
-        renderer#update ((obj :> nodeObject), obj#rect)
+        renderer#refreshChanged ((obj :> nodeObject), obj#rect)
 end
 
 let sort_tree root =
@@ -333,6 +353,8 @@ class textObject renderer = object(self)
     method text = self#text_info.text
     method font = self#text_info.font
 
+    method! toString = "T[" ^ self#text ^ "]"
+
     method fontExtents : Font.font_extents =
         renderer#fontExtents self#font
 
@@ -351,6 +373,13 @@ class textObject renderer = object(self)
 
     method setFont font =
         self#setContent (Primitive {self#prim with shape_type=Text {self#text_info with font}})
+
+    method! draw cr =
+        let rect = Layer.calc_rect ((self :> nodeObject), self#rect) in
+        let ti = self#text_info in
+        let prim = self#prim in
+        Graphics.set_color cr prim.color;
+        Graphics.draw_text cr ti.font rect ti.text
 
     initializer
         content <- (Primitive {
@@ -384,7 +413,20 @@ class rectObject renderer = object(self)
             pos=Pos.{x=r.x; y=r.y}; 
             shape_type=Rectangle Size.{w=r.w; h=r.h}
         })
-    
+
+    method! toString = 
+        let color = self#prim.color in
+        Printf.sprintf "R[%.2f %.2f %.2f]" color.r color.g color.b
+
+    method! draw cr =
+        let rect = Layer.calc_rect ((self :> nodeObject), self#rect) in
+        let prim = self#prim in
+        Graphics.set_color cr prim.color;
+        Graphics.rectangle cr rect;
+        match prim.draw_type with
+        | Fill -> Graphics.fill cr
+        | Stroke -> Graphics.stroke cr
+
     initializer
         content <- (Primitive {
             pos=Pos.zero;
@@ -399,7 +441,7 @@ class translateObject renderer = object(self)
 
     method setTranslation (x, y) : unit =
         self#setContent (Translate Pos.{x; y});
-        renderer#resume
+        renderer#refreshSingle (self :> nodeObject)
 end
 
 module Dirty = struct
@@ -412,24 +454,28 @@ let is_dirty = function
     | _ -> true
 end
 
+type update_type = 
+    | Refresh of Rect.t
+    | Changed of Rect.t * Rect.t
+    | FullRefresh
+
 class renderer = object(self)
-    val mutable root = new nodeObject (object method update _ = () end)
+    val mutable root = new nodeObject (object 
+        method groupUpdates _ = ()
+        method refreshChanged _ = ()
+        method refreshFull _ = ()
+        method addObject _ = ()
+        method removeObject _ = ()
+    end)
     val mutable requestDraw : unit -> unit = fun _ -> ()
-    val mutable immediateUpdates = true
-    val mutable dirty = true
-    val mutable fullRefresh = false
-    val mutable updates : (Rect.t * Rect.t) DynArray.t = DynArray.create ~capacity:10 ()
+    val mutable updates : update_type DynArray.t = DynArray.create ~capacity:10 ()
+
+    val rtree : nodeObject Rtree.t = Rtree.create()
+    val searchResults : nodeObject DynArray.t = DynArray.create ~capacity:100 ()
 
     method root = root
     method setRoot r = 
         root <- r;
-
-    method setImmediateUpdates p = immediateUpdates <- p
-    method pause = immediateUpdates <- false
-    method resume = 
-        immediateUpdates <- true;
-        fullRefresh <- true;
-        requestDraw()
 
     method fontExtents font : Font.font_extents =
         Graphics.font_extents_no_context font
@@ -439,26 +485,69 @@ class renderer = object(self)
     method createGroupObject = new groupObject self
     method createTranslateObject = new translateObject self
 
-    method update (obj, old_rect) =
-        if immediateUpdates then begin
-            dirty <- true;
+    val mutable drawEnabled = true
+    val mutable shouldUpdate = true
+
+    method addObject (obj : nodeObject) : unit =
+        let rect = obj#rect in
+        if not (Rect.is_empty rect) then (
+            let rect = Layer.calc_rect (obj, obj#rect) in
+            Rtree.insert (rtree, rect, obj)
+        )
+
+    method removeObject (obj : nodeObject) : unit =
+        let rect = Layer.calc_rect (obj, obj#rect) in
+        Rtree.delete (rtree, rect, fun o ->
+            phys_equal o obj)
+
+    method ignoreUpdates (f : unit -> unit) : unit =
+        let before = shouldUpdate in
+        shouldUpdate <- false;
+        f();
+        shouldUpdate <- before;
+
+    method groupUpdates f =
+        let before = drawEnabled in
+        drawEnabled <- false;
+        f();
+        drawEnabled <- before;
+        self#requestDraw
+
+    val mutable size = Size.zero
+    method setSize s = size <- s
+
+    method refreshFull =
+        if shouldUpdate then (
+            DynArray.clear updates;
+            DynArray.add updates FullRefresh;
+            self#requestDraw
+        )
+
+    method refreshChanged (obj, old_rect) =
+        if shouldUpdate then (
             let rect = Layer.calc_rect (obj, obj#rect)
             and old_rect = Layer.calc_rect (obj, old_rect) in
-            DynArray.add updates (rect, old_rect);
-            requestDraw()
-        end
+            DynArray.add updates (Changed (rect, old_rect));
+        )
+
+    method refreshSingle (obj : nodeObject) =
+        if shouldUpdate then (
+            let rect = Layer.calc_rect (obj, obj#rect) in
+            DynArray.add updates (Refresh rect)
+        )
 
     method setRequestDraw f =
         requestDraw <- f
+
+    method private requestDraw =
+        if drawEnabled then
+            requestDraw()
 
     val stat_font = Font.{
         size = 20.;
         font = "Ubuntu mono";
         weight = Bold;
     }
-
-    val mutable size = Size.zero
-    method setSize s = size <- s
 
     method private drawStats (cr, t1, t2) =
         Graphics.set_color cr Color.gray;
@@ -469,6 +558,26 @@ class renderer = object(self)
         Graphics.set_font_info cr stat_font;
         Graphics.draw_text_ cr Pos.{x=0.; y=size.h -. 2.} text;
 
+    method renderRefresh (cr, rect) =
+        Graphics.clip_rect cr rect;
+        let _, s1 = Util.time (fun _ ->
+            Rtree.search (rtree, rect, searchResults);
+            Util.dynarray_sort (searchResults, fun (obj1, obj2) ->
+                obj1#fullZIndex - obj2#fullZIndex
+            );
+            DynArray.iter (fun obj ->
+                obj#draw cr
+            ) searchResults
+        ) in
+        Graphics.clip_reset cr;
+        s1
+
+    method renderChanged (cr, rect, old_rect) =
+        (* Draw over old rect *)
+        let s1 = self#renderRefresh (cr, old_rect)
+        and s2 = self#renderRefresh (cr, rect) in
+        s1+.s2
+
     method render cr =
         (*let draw_debug_rects (cr, rect, old_rect) =
             Graphics.set_color cr Color.{r=Random.float 1.; g=Random.float 1.; b=Random.float 1.; a=1.};
@@ -478,26 +587,34 @@ class renderer = object(self)
             Graphics.rectangle cr rect;
             Graphics.fill cr;
         in*)
-        if immediateUpdates then begin
-            let sortTree, sortTime = Util.time (fun _ -> sort_tree root) in
-            if fullRefresh then (
-                Stdio.printf "FULL REFRESH!\n%!";
-                let _, t = Util.time (fun _ -> draw_tree(cr, sortTree)) in
-                self#drawStats(cr, sortTime, t);
-                fullRefresh <- false;
-                dirty <- false;
-            ) else if dirty then (
-                DynArray.iter (fun (rect, old_rect : Rect.t * Rect.t) ->
-                    Graphics.clip_rect cr old_rect;
-                    let _, draw_time1 = Util.time (fun _ -> draw_tree(cr, sortTree)) in
-                    Graphics.clip_reset cr;
-                    Graphics.clip_rect cr rect;
-                    let _, draw_time2 = Util.time (fun _ -> draw_tree(cr, sortTree)) in
-                    Graphics.clip_reset cr;
-                    self#drawStats (cr, sortTime, draw_time1+.draw_time2);
-                ) updates;
-                DynArray.clear updates;
-                dirty <- false;
-            )
+        if drawEnabled && DynArray.length updates > 0 then begin
+            let print_tree () = 
+                Stdio.printf "%s\n%!" (Test_rtree.str_tree rtree
+                    (fun n -> n#toString)
+                    (fun obj -> Layer.calc_rect (obj, obj#rect))
+                )
+            in
+            print_tree();
+            let searchTime, drawTime = Util.time (fun _ ->
+                (* Check if there is a FullRefresh, if so, ignore everything else *)
+                if DynArray.exists (fun u -> Poly.(u = FullRefresh)) updates then (
+                    DynArray.clear updates;
+                    DynArray.add updates FullRefresh;
+                );
+                DynArray.fold_left (fun acc update ->
+                    let search_time =  
+                        match update with
+                        | Refresh rect ->
+                            self#renderRefresh (cr, rect)
+                        | Changed (rect, old_rect) ->
+                            self#renderChanged (cr, rect, old_rect)
+                        | FullRefresh ->
+                            self#renderRefresh (cr, Rect.{x=0.; y=0.; w=size.w; h=size.h})
+                    in
+                    search_time+.acc
+                ) 0. updates
+            ) in
+            self#drawStats (cr, searchTime, drawTime-.searchTime);
+            DynArray.clear updates;
         end
 end

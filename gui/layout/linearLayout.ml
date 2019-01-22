@@ -2,7 +2,7 @@ class virtual ['a, 'b] linearLayout renderer =
 object(self)
     inherit ['a, 'b] Layout.layout
     val id = 0
-    val items : ('a, 'b) Layoutable.layoutable DynArray.t = DynArray.make 1
+    val items : ('a, 'b) Layoutable.layoutable DynArray.t = DynArray.create()
     val table = Hashtbl.Poly.create()
     val rev_table = Hashtbl.Poly.create()
     val mutable eventHandlers = []

@@ -55,7 +55,9 @@ let search (tree, rect, output) =
                     DynArray.add output data
             ) data
     in
-    loop tree
+    match tree.root with
+    | None -> ()
+    | Some root -> loop root
 ;;
 
 let enlargement_amount (rect1, rect2) =
@@ -282,6 +284,7 @@ let rec adjust_tree (l, ll) =
 ;;
 
 let insert (tree, rect, obj) : unit =
+    assert (not (Rect.is_empty rect));
     match tree.root with
     | None ->
         let arr = DynArray.create ~capacity:max_child_size () in

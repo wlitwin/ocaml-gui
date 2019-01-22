@@ -30,10 +30,20 @@ let set t idx v =
 let length t = t.size
 
 let iter (f : 'a -> unit) t : unit =
-    assert Poly.(t.state = Created);
     for i=0 to t.size-1 do
         f t.storage.(i)
     done
+;;
+
+let exists f t =
+    let rec loop idx =
+        if idx >= t.size then false
+        else (
+            if f t.storage.(idx) then true
+            else loop (idx+1)
+        )
+    in
+    loop 0
 ;;
 
 let delete t idx =
@@ -85,3 +95,30 @@ let add t item =
     t.size <- t.size + 1;
 ;;
 
+let capacity t = Array.length t.storage
+
+let map f t =
+    let dest = create ~capacity:(capacity t) () in
+    for i=0 to t.size-1 do
+        add dest (f t.storage.(i))
+    done;
+    dest
+;;
+
+let of_list lst =
+    let arr = create() in
+    let rec loop = function
+        | [] -> ()
+        | hd :: tl ->
+            add arr hd;
+            loop tl;
+    in
+    loop lst;
+    arr
+;;
+
+let iteri f t =
+    for i=0 to t.size-1 do
+        f i t.storage.(i)
+    done;
+;;

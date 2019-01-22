@@ -38,10 +38,11 @@ object(self)
          Util.timeit "resize" (fun _ ->
             let open Layoutable in
             renderer#setSize size;
-            renderer#pause;
-            self#widget#events#handle HandlesEvent.(mkEvent `Resize (`ResizeArg Rect.{x=0.;y=0.;w=size.w;h=size.h}));
-            renderer#resume;
-            (*Platform.Windowing.request_redraw window*)
+            renderer#ignoreUpdates (fun _ ->
+                self#widget#events#handle
+                    HandlesEvent.(mkEvent `Resize (`ResizeArg Rect.{x=0.;y=0.;w=size.w;h=size.h}));
+            );
+            renderer#refreshFull
         );
 
     method private checkSuperKeys key upDown =
@@ -63,30 +64,6 @@ object(self)
     method private keyUp key =
         self#checkSuperKeys key false;
         HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyUp (`KeyUpArg key)))
-
-        (*
-    method private draw (cr : Platform.Windowing.Graphics.context) =
-        Util.timeit "draw" (fun _ ->
-            try
-                self#widget#onDraw;
-                Rendering.draw cr self#widget#renderObject
-                (*
-                let event = HandlesEvent.(mkEvent `Paint (`PaintArg cr)) in
-                begin match draw_list with
-                | [] -> Drawable.(self#widget#events#handle event)
-                | lst -> 
-                        List.iter lst (fun w -> 
-                            w#events#handle event)
-                end;
-                draw_list <- []
-                *)
-            with e ->
-                (*Stdio.print_endline "==================== EXCEPTION OCCURRED ==================";
-                Stdio.print_endline (Exn.to_string e);
-                Backtrace.get() |> Backtrace.to_string |> Stdio.printf "%s\n%!"*)
-                ()
-        );
-        *)
 
     initializer
         renderer#setRequestDraw (fun _ ->

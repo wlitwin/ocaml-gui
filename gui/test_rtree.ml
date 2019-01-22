@@ -11,7 +11,7 @@ let str_parent = function
     | None -> "None"
     | Some p -> str_of_obj p
 
-let str_node node = 
+let str_node node print calc_bounds =
     let open Rtree in
     let rec loop idnt = 
         let pad = String.make idnt ' ' in
@@ -20,8 +20,9 @@ let str_node node =
             Printf.sprintf "%sLeaf [%s / %s] {%.2f %.2f %.2f %.2f}\n%s"
             pad (str_parent parent) (str_of_obj l) bounds.x bounds.y bounds.w bounds.h 
             (DynArray.fold_left (fun str (_, item) ->
-                str ^ Printf.sprintf "%s %d {%.2f %.2f %.2f %.2f}\n"
-                pad item.id item.bounds.x item.bounds.y item.bounds.w item.bounds.h
+                let bounds : Rect.t = calc_bounds item in
+                str ^ Printf.sprintf "%s [%s] {%.2f %.2f %.2f %.2f}\n"
+                pad (print item) bounds.x bounds.y bounds.w bounds.h
             ) "" data)
         | Node {bounds; children; parent} as n ->
             Printf.sprintf "%sNode [%s / %s] {%.2f %.2f %.2f %.2f}\n%s"
@@ -33,14 +34,15 @@ let str_node node =
     loop 0 node
 ;;
 
-let str_tree tree =
-    match tree.Rtree.root with
-    | None -> "Empty tree"
-    | Some root -> str_node root
+let str_tree tree print bounds =
+        match tree.Rtree.root with
+        | None -> "Empty tree"
+        | Some root -> str_node root print bounds
 ;;
 
 let print_tree tree =
-    Stdio.printf "%s\n%!" (str_tree tree)
+    Stdio.printf "%s\n%!"
+        (str_tree tree (fun item -> Int.to_string item.id) (fun item -> item.bounds))
 ;;
 
 let mk id bounds = {

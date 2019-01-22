@@ -14,18 +14,29 @@ class ['a, 'b] textBoxWidget app = object(self)
 
     method text = textObject#text
     method setText new_text =
-        self#setTextInternal new_text;
-        self#moveCursorToEnd;
+        app#renderer#groupUpdates (fun _ ->
+            self#setTextInternal new_text;
+            self#moveCursorToEnd;
+        )
 
     method private setTextInternal new_text =
-        textObject#setText new_text;
-        self#updateCursor;
+        app#renderer#groupUpdates (fun _ ->
+            textObject#setText new_text;
+            self#updateCursor;
+        );
         events#handle HandlesEvent.(mkEvent `TextChanged (`TextChangedP new_text));
 
     method showCursor = showCursor
     method setShowCursor b = showCursor <- b
 
-    method contentSize = textObject#size
+    method contentSize = 
+        let sz : Size.t = textObject#size in
+        if Float.(sz.h = 0.) then
+            Rendering.measure_text (textObject#font, "defaultText")
+        else (
+            Stdio.printf "TEXT SIZE %f %f\n" sz.w sz.h;
+            sz
+        )
 
     method private splitOnCursor =
         let text = self#text in
@@ -94,7 +105,7 @@ class ['a, 'b] textBoxWidget app = object(self)
     method updateCursor =
         let text = String.sub textObject#text 0 cursorLoc in
         let size : Size.t = Rendering.measure_text(textObject#font, text) in
-        cursorObject#setRect Rect.{x=rect.x+.size.w; y=rect.y; w=1.; h=rect.h}
+        cursorObject#setRect Rect.{x=rect.x+.size.w; y=rect.y; w=1.; h=size.h}
 
     method! onFocused =
         renderObject#attach (cursorObject :> Rendering.nodeObject)
@@ -106,8 +117,10 @@ class ['a, 'b] textBoxWidget app = object(self)
         super#onResize r;
         border#setRect rect;
         let fe : Font.font_extents = textObject#fontExtents in
-        textObject#setPos Pos.{x=rect.x; y=rect.y+.fe.Font.ascent};
-        self#updateCursor
+        app#renderer#groupUpdates (fun _ ->
+            textObject#setPos Pos.{x=rect.x; y=rect.y+.fe.Font.ascent};
+            self#updateCursor
+        )
 
     initializer
         self#setBGColor Color.white;
