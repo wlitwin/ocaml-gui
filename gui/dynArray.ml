@@ -29,7 +29,7 @@ let set t idx v =
 
 let length t = t.size
 
-let iter f t =
+let iter (f : 'a -> unit) t : unit =
     assert Poly.(t.state = Created);
     for i=0 to t.size-1 do
         f t.storage.(i)
