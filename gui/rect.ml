@@ -41,12 +41,10 @@ let intersection r1 r2 =
 ;;
 
 let overlaps (r1, r2) =
-    if Float.(r1.y > (r2.y + r2.h)
-        || (r1.y + r1.h) < r2.y) then false
-    else
-        not (Float.(r1.x > (r2.x + r2.h)
-                || (r1.x + r1.w) < r2.x))
-   
+    Float.((r1.y <= (r2.y + r2.h))
+        && ((r1.y + r1.h) >= r2.y)
+        && (r1.x <= (r2.x + r2.w))
+        && ((r1.x + r1.w) >= r2.x))
 ;;
 
 let is_empty {w; h} =

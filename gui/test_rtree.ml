@@ -57,6 +57,7 @@ let insert tree item =
 let delete tree item =
     Rtree.delete (tree, item.bounds, fun i -> i.id = item.id)
 ;;
+(*
 
 let test1 = 
     let tree = Rtree.create() in
@@ -165,4 +166,4 @@ let _ =
     insert tree item1;
     insert tree item2;
     print_tree tree;
-
+*)

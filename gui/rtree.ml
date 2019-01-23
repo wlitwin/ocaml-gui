@@ -115,8 +115,6 @@ let pick_seeds (nodes, bounds) =
             )
         done; 
     done;
-    let i, j = !best_pair in
-    Stdio.printf "BEST PAIR %d %d\n" i j;
     !best_pair
 ;;
 
@@ -338,13 +336,7 @@ let rec find_leaf (node, rect, pred) : (int * 'a tree) option =
             else None
         )
     | Node {bounds; children} ->
-            let open Rect in
-        Stdio.printf "here %f %f %f %f - %f %f %f %f\n"
-        bounds.x bounds.y bounds.w bounds.h
-        rect.x rect.y rect.w rect.h;
-        Stdio.printf "OVERLAPS %b\n" (Rect.overlaps (bounds, rect));
         if Rect.overlaps (bounds, rect) then (
-            Stdio.printf "overlaps\n";
             until (children, fun (_, node) ->
                 find_leaf (node, rect, pred)
             )
@@ -472,7 +464,6 @@ let condense_tree (tree, leaf) =
             let before = DynArray.length children in
             DynArray.filter (fun item -> not (phys_equal item leaf)) children;
             let after = DynArray.length children in
-            Stdio.printf "BEFORE %d AFTER %d\n%!" before after;
             assert (after = before - 1 || after = before);
             loop parent;
         in
@@ -480,16 +471,13 @@ let condense_tree (tree, leaf) =
         | Leaf {parent=None}
         | Node {parent=None} -> ()
         | Node ({parent=Some (Node p as parent)} as n) when too_few_children n.children ->
-            Stdio.printf "Eliminate node\n%!";
             n.parent <- None;
             eliminate (parent, p.children);
         | Leaf ({parent=Some (Node p as parent); data} as l) when too_few_children data ->
-            Stdio.printf "Eliminate leaf\n%!";
             l.parent <- None;
             eliminate (parent, p.children);
         | Node {parent=Some (Node _)}
         | Leaf {parent=Some (Node _)} ->
-            Stdio.printf "Condense parent rects\n%!";
             condense_parent_rects (Some leaf)
         | _ -> failwith "impossible condense_tree"
     in
@@ -505,7 +493,6 @@ let delete (tree, rect, pred) =
         match find_leaf (root, rect, pred) with
         | None -> ()
         | Some (idx, (Leaf l as leaf)) ->
-            Stdio.printf "Found node to delete\n%!";
             DynArray.delete l.data idx;
             shrink_bounds leaf;
             condense_tree (tree, leaf);

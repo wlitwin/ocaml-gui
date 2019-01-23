@@ -58,12 +58,16 @@ object(self)
         | Keys.Enter -> 
             Platform.Windowing.request_redraw window
         | _ ->
-            self#checkSuperKeys key true;
-            HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyDown (`KeyDownArg key)))
+            renderer#groupUpdates (fun _ ->
+                self#checkSuperKeys key true;
+                HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyDown (`KeyDownArg key)))
+            )
 
     method private keyUp key =
         self#checkSuperKeys key false;
-        HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyUp (`KeyUpArg key)))
+        renderer#groupUpdates (fun _ ->
+            HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyUp (`KeyUpArg key)))
+        )
 
     initializer
         renderer#setRequestDraw (fun _ ->

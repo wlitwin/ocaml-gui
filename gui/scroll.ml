@@ -107,8 +107,10 @@ object(self)
                                   y=rect.y; h=rect.h; w=barSizeW};
         horzScroller#resize Rect.{x=rect.x;
                                   y=rect.y +. rect.h -. barSizeH; h=barSizeH; w=rect.w};
-        self#updateScrollbarVisibility;
-        self#updateTranslation
+        app#renderer#groupUpdates (fun _ ->
+            self#updateScrollbarVisibility;
+            self#updateTranslation
+        )
 
     method private updateScrollbarVisibility =
         let updateBar b =

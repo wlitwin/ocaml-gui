@@ -34,7 +34,6 @@ class ['a, 'b] textBoxWidget app = object(self)
         if Float.(sz.h = 0.) then
             Rendering.measure_text (textObject#font, "defaultText")
         else (
-            Stdio.printf "TEXT SIZE %f %f\n" sz.w sz.h;
             sz
         )
 
@@ -52,7 +51,7 @@ class ['a, 'b] textBoxWidget app = object(self)
     method private deleteAtCursor =
         let before, after = self#splitOnCursor in
         let before = String.sub before 0 (max 0 (String.length before - 1)) in
-        self#moveCursorBack;
+        cursorLoc <- (if cursorLoc > 0 then cursorLoc - 1 else 0);
         self#setTextInternal (before ^ after);
 
     method private moveCursorBack =
@@ -105,7 +104,7 @@ class ['a, 'b] textBoxWidget app = object(self)
     method updateCursor =
         let text = String.sub textObject#text 0 cursorLoc in
         let size : Size.t = Rendering.measure_text(textObject#font, text) in
-        cursorObject#setRect Rect.{x=rect.x+.size.w; y=rect.y; w=1.; h=size.h}
+        cursorObject#setRect Rect.{x=rect.x+.size.w; y=rect.y; w=2.; h=size.h}
 
     method! onFocused =
         renderObject#attach (cursorObject :> Rendering.nodeObject)
@@ -128,7 +127,9 @@ class ['a, 'b] textBoxWidget app = object(self)
         border#setColor Color.black;
         renderObject#attach (border :> Rendering.nodeObject);
         renderObject#attach (textObject :> Rendering.nodeObject);
-        renderObject#attach (cursorObject :> Rendering.nodeObject);
+        cursorObject#setId "cursor";
+        textObject#setId "text";
+        border#setId "border";
         border#setZIndex 1;
         textObject#setZIndex 2;
         cursorObject#setZIndex 2;

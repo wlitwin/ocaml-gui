@@ -50,6 +50,7 @@ class ['a, 'b] basicWidget app = object(self)
 
     initializer
         self#setBGColor style#bgColor;
+        bgRect#setId "BGRECT";
         renderObject#attach (bgRect :> Rendering.nodeObject);
         rect <- Rect.{x=0.; y=0.; w=10.; h=10.}
 end

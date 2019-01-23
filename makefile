@@ -44,5 +44,8 @@ test: all
 	$(OCAMLBUILD) -pkg $(PKGS),oUnit -Is src,test test/test.native
 	./test.native
 
+utop:
+	echo
+
 clean:
 	$(OCAMLBUILD) -clean
