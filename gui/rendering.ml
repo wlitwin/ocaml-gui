@@ -116,8 +116,6 @@ class nodeObject renderer = object(self)
         renderer#addObject (self :> nodeObject);
         renderer#refreshChanged ((self :> nodeObject), old_rect);
 
-    method children = children
-
     method toString = identifier
 
     method attach (obj : nodeObject) : unit  =
@@ -145,6 +143,134 @@ class nodeObject renderer = object(self)
         DynArray.filter (fun o -> not (phys_equal obj o)) children;
         renderer#refreshChanged ((obj :> nodeObject), obj#rect);
         renderer#removeObject obj;
+end
+
+module SpatialIndex = struct
+    module HP = Hashtbl.Poly
+
+    type t = {
+        rtree : nodeObject Rtree.t;
+        object_table : (nodeObject, Rect.t) HP.t;
+    }
+
+    let create () = {
+        rtree = Rtree.create();
+        object_table = HP.create();
+    }
+
+    let add (t, obj, rect) =
+        if not (HP.mem t.object_table obj) then (
+            HP.set t.object_table obj rect;
+            Rtree.insert (t.rtree, rect, obj);
+        )
+
+    let search (t, rect, results) =
+        Rtree.search (t.rtree, rect, results)
+
+    let remove (t, obj) =
+        if HP.mem t.object_table obj then (
+            let rect = HP.find_exn t.object_table obj in
+            HP.remove t.object_table obj;
+            Rtree.delete (t.rtree, rect, (fun o -> phys_equal o obj))
+        )
+end
+
+module Drawable = struct
+    type prim = {
+        mutable bounds : Rect.t;
+        mutable color : Color.t;
+        mutable fill_type : draw_type;
+    }
+
+    type text_rec = {
+        mutable text : string;
+        mutable font : Font.t;
+        prim : prim;
+    }
+
+    type view_rec = {
+        mutable outer_bounds : Rect.t;
+        mutable inner_bounds : Rect.t;
+        index : SpatialIndex.t;
+        children : any_object DynArray.t;
+    }
+
+    and any_object = Ex : 'a t -> any_object
+
+    and _ t =
+        | Text : text_rec -> text_rec t
+        | Rect : prim -> prim t
+        | Viewport : view_rec -> view_rec t
+
+    module Prim = struct
+        let create ?(bounds=Rect.empty) ?(color=Color.black) ?(fill_type=Fill) () = {
+            bounds; color; fill_type
+        }
+
+        let set_pos (prim, pos : prim * Pos.t) =
+            prim.bounds <- {prim.bounds with x=pos.x; y=pos.y}
+    end
+
+    module Viewport = struct
+        let create ?(outer_bounds=Rect.empty) ?(inner_bounds=Rect.empty) () = Viewport {
+            outer_bounds;    
+            inner_bounds;
+            index = SpatialIndex.create();
+            children = DynArray.create();
+        }
+
+        let set_inner_bounds : view_rec t * Rect.t -> unit = function
+            | Viewport v, rect -> v.inner_bounds <- rect
+
+        let set_outer_bounds : view_rec t * Rect.t -> unit = function
+            | Viewport v, rect -> v.inner_bounds <- rect
+
+        let add_child : view_rec t * 'a t -> unit = function
+            | Viewport v, child -> DynArray.add v.children (Ex child)
+
+        let iter : (view_rec t * (any_object -> unit)) -> unit = function
+            | Viewport v, f -> DynArray.iter f v.children 
+    end
+
+    module Text = struct
+        let create ?(text="") ?(font=Font.default_font) () = Text {
+            text;
+            font;
+            prim=Prim.create();
+        }
+
+        let set_text : text_rec t * string -> unit = function
+            | Text t, str -> t.text <- str
+
+        let set_font : text_rec t * Font.t -> unit = function
+            | Text t, font -> t.font <- font
+
+        let set_pos : text_rec t * Pos.t -> unit = function
+            | Text t, pos -> Prim.set_pos (t.prim, pos)
+    end
+
+    module Rect = struct
+        let create ?(bounds=Rect.empty) ?(color=Color.red) ?(fill_type=Fill) () =
+            Rect (Prim.create ~bounds ~color ~fill_type ())
+
+        let set_rect : prim t * Rect.t -> unit = function
+            | Rect r, rect -> r.bounds <- rect
+
+        let set_pos : prim t * Pos.t -> unit = function
+            | Rect r, pos -> Prim.set_pos (r, pos)
+    end
+
+    let test () =
+        let v = Viewport.create() in
+        let t = Text.create() in
+        let r = Rect.create() in
+        Viewport.add_child (v, r);
+        Viewport.add_child (v, t);
+        Viewport.iter (v, function
+            | Ex (Text _) -> Stdio.printf "TEXT\n"
+            | Ex (Rect _) -> Stdio.printf "RECT\n"
+            | Ex (Viewport _) -> Stdio.printf "VIEWPORT\n")
+
 end
 
 module Layer = struct
@@ -302,9 +428,21 @@ end
 class translateObject renderer = object(self)
     inherit nodeObject renderer
 
-    method setTranslation (x, y) : unit =
+    method setTranslation (x, y : float * float) : unit =
+        (*
         self#setContent (Translate Pos.{x; y});
         renderer#refreshSingle (self :> nodeObject)
+        *)
+        ()
+
+    method! attach obj =
+        ()
+
+    method! detach obj =
+        ()
+
+    method! draw (cr : Platform.Windowing.Graphics.context) : unit =
+        ()
 end
 
 module Dirty = struct
@@ -333,7 +471,7 @@ class renderer = object(self)
     val mutable requestDraw : unit -> unit = fun _ -> ()
     val mutable updates : update_type DynArray.t = DynArray.create ~capacity:10 ()
 
-    val rtree : nodeObject Rtree.t = Rtree.create()
+    val index : SpatialIndex.t = SpatialIndex.create()
     val searchResults : nodeObject DynArray.t = DynArray.create ~capacity:100 ()
 
     method root = root
@@ -348,27 +486,18 @@ class renderer = object(self)
     method createGroupObject = new groupObject self
     method createTranslateObject = new translateObject self
 
-    (* TEMP TABLE *)
-    val objectTable : (nodeObject, Rect.t) HP.t = HP.create()
-
     val mutable drawEnabled = true
     val mutable shouldUpdate = true
 
     method addObject (obj : nodeObject) : unit =
         let rect = obj#rect in
-        if not (Rect.is_empty rect) && Option.is_some obj#parent && not (HP.mem objectTable obj) then (
+        if not (Rect.is_empty rect) && Option.is_some obj#parent then (
             let rect = Layer.calc_rect (obj, obj#rect) in
-            HP.set objectTable obj rect;
-            Rtree.insert (rtree, rect, obj)
+            SpatialIndex.add (index, obj, rect);
         )
 
     method removeObject (obj : nodeObject) : unit =
-        if HP.mem objectTable obj then (
-            let rect = HP.find_exn objectTable obj in
-            HP.remove objectTable obj;
-            Rtree.delete (rtree, rect, fun o ->
-                phys_equal o obj)
-        )
+        SpatialIndex.remove (index, obj);
 
     method ignoreUpdates (f : unit -> unit) : unit =
         let before = shouldUpdate in
@@ -435,7 +564,7 @@ class renderer = object(self)
         (*Stdio.printf "REFRESH RECT %.2f %.2f %.2f %.2f\n%!" rect.x rect.y rect.w rect.h;*)
         Graphics.clip_rect cr rect;
         let _, s1 = Util.time (fun _ ->
-            Rtree.search (rtree, rect, searchResults);
+            SpatialIndex.search (index , rect, searchResults);
             Util.dynarray_sort (searchResults, fun (obj1, obj2) ->
                 obj1#fullZIndex - obj2#fullZIndex
             );

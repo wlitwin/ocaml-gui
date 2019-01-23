@@ -114,8 +114,8 @@ object(self)
 
     method private updateScrollbarVisibility =
         let updateBar b =
-            if Float.(b#ratio < 1.0) then renderObject#attach b#renderObject
-            else renderObject#detach b#renderObject
+            if Float.(b#ratio < 1.0) then (renderObject#attach b#renderObject)
+            else (renderObject#detach b#renderObject)
         in
         updateBar vertScroller;
         updateBar horzScroller;
@@ -136,8 +136,10 @@ object(self)
             let wdenom = max (cont#rect.w -. self#rect.w) 1. in
             let vpos = (if oy1 < oy2 then (oy +. oy1) else (oy -. oy2)) /. vdenom in
             let wpos = (if ox1 < ox2 then (ox +. ox1) else (ox -. ox2)) /. wdenom in
-            vertScroller#setPosition vpos;
-            horzScroller#setPosition wpos;
+            app#renderer#groupUpdates (fun _ ->
+                vertScroller#setPosition vpos;
+                horzScroller#setPosition wpos;
+            )
         end
 
     (* Can never be < 0 or > cont.w - rect.w *)
