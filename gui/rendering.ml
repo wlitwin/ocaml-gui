@@ -148,9 +148,9 @@ end
 module SpatialIndex = struct
     module HP = Hashtbl.Poly
 
-    type t = {
-        rtree : nodeObject Rtree.t;
-        object_table : (nodeObject, Rect.t) HP.t;
+    type 'a t = {
+        rtree : 'a Rtree.t;
+        object_table : ('a, Rect.t) HP.t;
     }
 
     let create () = {
@@ -191,8 +191,12 @@ module Drawable = struct
     type view_rec = {
         mutable outer_bounds : Rect.t;
         mutable inner_bounds : Rect.t;
-        index : SpatialIndex.t;
-        children : any_object DynArray.t;
+        index : any_object SpatialIndex.t;
+        view_children : any_object DynArray.t;
+    }
+
+    and group_rec = {
+        group_children : any_object DynArray.t;
     }
 
     and any_object = Ex : 'a t -> any_object
@@ -200,7 +204,18 @@ module Drawable = struct
     and _ t =
         | Text : text_rec -> text_rec t
         | Rect : prim -> prim t
-        | Viewport : view_rec -> view_rec t
+        | Group : group_rec -> (unit * group_rec) t
+        | Viewport : view_rec -> (unit * view_rec) t
+
+    let update : type a. a t -> unit = function
+        | Text _ -> ()
+        | Rect _ -> ()
+        | Group _ -> ()
+        | Viewport _ -> ()
+
+    let with_child : type a. (unit * a) t -> unit =  function
+        | Group _ -> ()
+        | Viewport _ -> ()
 
     module Prim = struct
         let create ?(bounds=Rect.empty) ?(color=Color.black) ?(fill_type=Fill) () = {
@@ -216,20 +231,32 @@ module Drawable = struct
             outer_bounds;    
             inner_bounds;
             index = SpatialIndex.create();
-            children = DynArray.create();
+            view_children = DynArray.create();
         }
 
-        let set_inner_bounds : view_rec t * Rect.t -> unit = function
+        let set_inner_bounds : (unit * view_rec) t * Rect.t -> unit = function
             | Viewport v, rect -> v.inner_bounds <- rect
 
-        let set_outer_bounds : view_rec t * Rect.t -> unit = function
+        let set_outer_bounds : (unit * view_rec) t * Rect.t -> unit = function
             | Viewport v, rect -> v.inner_bounds <- rect
 
-        let add_child : view_rec t * 'a t -> unit = function
-            | Viewport v, child -> DynArray.add v.children (Ex child)
+        let add_child : (unit * view_rec) t * 'a t -> unit = function
+            | Viewport v, child -> DynArray.add v.view_children (Ex child)
 
-        let iter : (view_rec t * (any_object -> unit)) -> unit = function
-            | Viewport v, f -> DynArray.iter f v.children 
+        let iter : ((unit * view_rec) t * (any_object -> unit)) -> unit = function
+            | Viewport v, f -> DynArray.iter f v.view_children 
+    end
+
+    module Group = struct
+        let create ?(children=[]) () = Group {
+            group_children=DynArray.of_list children
+        }
+
+        let add_child : (unit * group_rec) t * 'a t -> unit = function
+            | Group g, child -> DynArray.add g.group_children (Ex child)
+
+        let iter : (unit * group_rec) t * (any_object -> unit) -> unit = function
+            | Group g, f -> DynArray.iter f g.group_children
     end
 
     module Text = struct
@@ -264,14 +291,22 @@ module Drawable = struct
         let v = Viewport.create() in
         let t = Text.create() in
         let r = Rect.create() in
+        let g = Group.create() in
         Viewport.add_child (v, r);
         Viewport.add_child (v, t);
+        Viewport.add_child (v, v);
+        Viewport.add_child (v, g);
         Viewport.iter (v, function
             | Ex (Text _) -> Stdio.printf "TEXT\n"
             | Ex (Rect _) -> Stdio.printf "RECT\n"
-            | Ex (Viewport _) -> Stdio.printf "VIEWPORT\n")
-
+            | Ex (Viewport _) -> Stdio.printf "VIEWPORT\n"
+            | Ex (Group _) -> Stdio.printf "GROUP\n"
+        );
+        with_child g;
+        with_child v;
 end
+
+let _ = Drawable.test()
 
 module Layer = struct
 
@@ -471,7 +506,7 @@ class renderer = object(self)
     val mutable requestDraw : unit -> unit = fun _ -> ()
     val mutable updates : update_type DynArray.t = DynArray.create ~capacity:10 ()
 
-    val index : SpatialIndex.t = SpatialIndex.create()
+    val index : nodeObject SpatialIndex.t = SpatialIndex.create()
     val searchResults : nodeObject DynArray.t = DynArray.create ~capacity:100 ()
 
     method root = root
