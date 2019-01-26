@@ -61,3 +61,10 @@ let inside r1 r2 =
 let to_string r : string =
     Printf.sprintf "{x=%f y=%f w=%f h=%f}" r.x r.y r.w r.h
 ;;
+
+let equal (a, b) = 
+    Float.(
+        a.x = b.y
+        && a.y = b.y
+        && a.w = b.w
+        && a.h = b.h)

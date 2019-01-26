@@ -212,14 +212,25 @@ module Windowing : PlatformSig.WindowingSig = struct
         ignore(gtk_window#event#connect#key_release (fun key -> 
             keyRelease (fix_key (context, key));
             true));
+        let id = ref None in
+        let last_resize = ref Size.zero in
         ignore(gtk_window#event#connect#configure (fun evt -> 
                 let module GC = GdkEvent.Configure in
                 let w = GC.width evt
                 and h = GC.height evt in
-                context.backing_image <- Graphics.create_image w h;
-                resize Size.{
-                    w=Float.of_int w; 
-                    h=Float.of_int h};
+                last_resize := Size.{w=Float.of_int w; h=Float.of_int h};
+                begin match !id with
+                | Some id -> GMain.Timeout.remove id
+                | None -> ()
+                end;
+                id := Some (GMain.Timeout.add ~ms:10 ~callback:(fun _ ->
+                    id := None;
+                    context.backing_image <- Graphics.create_image w h;
+                    resize Size.{
+                        w=Float.of_int w; 
+                        h=Float.of_int h};
+                    false
+                ));
                 false
             )
         );

@@ -35,3 +35,5 @@ let min s1 s2 = {
 let to_string s : string =
     Printf.sprintf "{w=%f h=%f}" s.w s.h
 
+let equal (a, b) =
+    Float.(a.w = b.w && a.h = b.h)

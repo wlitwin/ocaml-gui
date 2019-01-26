@@ -22,3 +22,5 @@ let dot a b = a.x*.b.x +. a.y*.b.y
 
 let len v = Float.sqrt (dot v v)
 
+let equal (a, b) =
+    Float.(a.x = b.x && a.y = b.y)

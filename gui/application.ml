@@ -55,8 +55,6 @@ object(self)
 
     method private keyDown key =
         match key with
-        | Keys.Enter -> 
-            Platform.Windowing.request_redraw window
         | _ ->
             renderer#groupUpdates (fun _ ->
                 self#checkSuperKeys key true;

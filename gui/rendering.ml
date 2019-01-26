@@ -270,7 +270,7 @@ module Drawable = struct
             | Viewport _ as child, {parent=Some (P (Viewport v))} ->
                 let rect = get_rect child in
                 let id = get_id child in
-                Stdio.printf "UPDATEING VIEWPROTING %f %f %f %f\n" rect.x rect.y rect.w rect.h;
+                (*Stdio.printf "UPDATEING VIEWPROTING %f %f %f %f\n%!" rect.x rect.y rect.w rect.h;*)
                 SpatialIndex.remove (v.index, id);
                 SpatialIndex.add (v.index, (id, Ex child), rect);
             | child, {parent=Some (P (Viewport v))} ->
@@ -315,7 +315,6 @@ module Drawable = struct
         in
         function
         | c, p -> 
-            Stdio.printf "SET_PARENT\n";
             let common = get_common c in
             begin match common.parent, p with
             | Some (P ex_p), p when phys_equal (get_id ex_p) (get_id p) -> ()
@@ -339,7 +338,6 @@ module Drawable = struct
 
     let unparent : type a. a t -> unit = function
         | child ->
-            let _ = Stdio.printf "UNPARENT PARENT\n" in
             let common = get_common child in
             match common.parent with
             | Some (P p) -> remove_child (p, child)
@@ -380,11 +378,11 @@ module Drawable = struct
             Graphics.clip_rect cr v.v_common.bounds;
             let outer = v.v_common.bounds in
             let inner = v.inner_bounds in
-            let translate_x = v.v_common.bounds.x -. v.inner_bounds.x in
-            let translate_y = v.v_common.bounds.y -. v.inner_bounds.y in
-            Stdio.printf "OFFSET %f %f\n" translate_x translate_y;
+            let translate_x = Float.round (v.v_common.bounds.x -. v.inner_bounds.x) in
+            let translate_y = Float.round (v.v_common.bounds.y -. v.inner_bounds.y) in
+            (*Stdio.printf "OFFSET %f %f\n" translate_x translate_y;
             Stdio.printf "OUTER %f %f %f %f\n" outer.x outer.y outer.w outer.h;
-            Stdio.printf "INNER %f %f %f %f\n" inner.x inner.y inner.w inner.h;
+            Stdio.printf "INNER %f %f %f %f\n%!" inner.x inner.y inner.w inner.h;*)
             Graphics.translate cr translate_x translate_y;
             let search_rect = Rectangle.{rect with x=rect.x -. translate_x; y=rect.y-.translate_y} in
             SpatialIndex.search (v.index, search_rect, v.search_results);
@@ -448,8 +446,8 @@ module Drawable = struct
             | Viewport v as view, z_index ->
                 v.v_common.relative_z_index <- z_index;
                 update_z_index view;
-                Stdio.printf "UPDATE Z INDEX (VIEW)\n%s%!"
-                (str_tree view);
+                (*Stdio.printf "UPDATE Z INDEX (VIEW)\n%s%!"
+                (str_tree view);*)
         ;;
 
         let get_index : (unit * view) t -> (id, any_object) SpatialIndex.t = function
@@ -474,8 +472,8 @@ module Drawable = struct
             | Group g as group, z_index ->
                 g.g_common.relative_z_index <- z_index;
                 update_z_index group;
-                Stdio.printf "UPDATE Z INDEX (GROUP)\n%s%!"
-                (str_tree group);
+                (*Stdio.printf "UPDATE Z INDEX (GROUP)\n%s%!"
+                (str_tree group);*)
         ;;
 
         let iter : (unit * group) t * (any_object -> unit) -> unit = function
@@ -602,9 +600,13 @@ class groupObject render = object(self)
     method setId i = id <- i
     method addChild : Drawable.any_object -> unit = fun (Ex c) ->
         Drawable.set_parent (c, group);
+        let rect = Drawable.get_rect c in
+        render#refreshSingle rect
 
     method removeChild : Drawable.any_object -> unit = fun (Ex c) ->
-        Drawable.unparent c
+        let rect = Drawable.get_rect c in
+        Drawable.unparent c;
+        render#refreshSingle rect
 
     method setZIndex (z : int) : unit =
         Drawable.Group.set_z_index (group, z);
@@ -616,9 +618,13 @@ class viewportObject render = object
 
     method addChild : Drawable.any_object -> unit = fun (Ex c) ->
         Drawable.set_parent (c, view);
+        let rect = Drawable.get_rect c in
+        render#refreshSingle rect
 
     method removeChild : Drawable.any_object -> unit = fun (Ex c) ->
-        Drawable.unparent c
+        let rect = Drawable.get_rect c in
+        Drawable.unparent c;
+        render#refreshSingle rect
 
     method setZIndex (z : int) : unit =
         Drawable.Viewport.set_z_index (view, z);
@@ -626,18 +632,25 @@ class viewportObject render = object
 
     method setOuterBounds (r : Rect.t) : unit =
         let before = Drawable.Viewport.get_outer_bounds view in
-        Drawable.Viewport.set_outer_bounds (view, r);
-        render#refreshChanged (before, r)
+        if not (Rect.equal(before, r)) then (
+            Drawable.Viewport.set_outer_bounds (view, r);
+            render#refreshChanged (before, r)
+        )
 
     method setInnerBounds (r : Rect.t) : unit =
-        Drawable.Viewport.set_inner_bounds (view, r);
-        render#refreshSingle (Drawable.Viewport.get_outer_bounds view)
+        let inner_bounds = Drawable.Viewport.get_inner_bounds view in
+        if not (Rect.equal(inner_bounds, r)) then (
+            Drawable.Viewport.set_inner_bounds (view, r);
+            render#refreshSingle (Drawable.Viewport.get_outer_bounds view)
+        )
 
     method obj = Drawable.Ex view
     method setTranslation (x, y : float * float) : unit =
         let bounds = Drawable.Viewport.get_inner_bounds view in
-        Drawable.Viewport.set_inner_bounds (view, Rect.{bounds with x; y});
-        render#refreshSingle (Drawable.Viewport.get_outer_bounds view);
+        if not (Pos.equal(Pos.{x;y}, Pos.{x=bounds.x;y=bounds.y})) then (
+            Drawable.Viewport.set_inner_bounds (view, Rect.{bounds with x; y});
+            render#refreshSingle (Drawable.Viewport.get_outer_bounds view);
+        )
 end
 
 class rectObject render = object
@@ -649,9 +662,11 @@ class rectObject render = object
     method setId i = id <- i
     method setRect (r : Rect.t) : unit =
         let before = Drawable.Rect.get_rect rect in
-        Drawable.Rect.set_rect (rect, r);
-        let after = Drawable.Rect.get_rect rect in
-        render#refreshChanged (before, after)
+        if not (Rect.equal(before, r)) then (
+            Drawable.Rect.set_rect (rect, r);
+            let after = Drawable.Rect.get_rect rect in
+            render#refreshChanged (before, after)
+        )
 
     method setColor (color : Color.t) : unit =
         Drawable.Rect.set_color (rect, color);
@@ -674,9 +689,11 @@ class textObject render = object
 
     method setPos (pos : Pos.t) : unit =
         let before = Drawable.Text.get_bounds text in
-        Drawable.Text.set_pos (text, pos);
-        let after = Drawable.Text.get_bounds text in
-        render#refreshChanged (before, after)
+        if not (Pos.equal (pos, Pos.{x=before.x; y=before.y})) then (
+            Drawable.Text.set_pos (text, pos);
+            let after = Drawable.Text.get_bounds text in
+            render#refreshChanged (before, after)
+        )
 
     method setText (str : string) : unit =
         let before = Drawable.Text.get_bounds text in
@@ -733,6 +750,8 @@ class renderer = object(self)
     method setSize (s : Size.t) : unit =
         Drawable.Viewport.set_outer_bounds (root, Rect.{x=0.; y=0.; w=s.w; h=s.h});
         size <- s
+
+    method updates = updates
 
     method refreshFull =
         if shouldUpdate then (
@@ -800,7 +819,7 @@ class renderer = object(self)
             Graphics.fill cr;
         in*)
         if drawEnabled && DynArray.length updates > 0 then begin
-            let print_tree () = 
+            (*let print_tree () = 
                 Stdio.printf "%s\n%!" (Test_rtree.str_tree (Drawable.Viewport.get_index root).rtree
                     (fun (id, Ex obj) -> 
                         Printf.sprintf "%s %d" 
@@ -816,10 +835,11 @@ class renderer = object(self)
                 )
             in
             print_tree();
-            Caml.print_endline (Drawable.str_tree root);
+            Caml.print_endline (Drawable.str_tree root);*)
             let searchTime, drawTime = Util.time (fun _ ->
                 (* Check if there is a FullRefresh, if so, ignore everything else *)
-                if DynArray.exists (fun u -> Poly.(u = FullRefresh)) updates then (
+                if  DynArray.length updates > 50
+                    || DynArray.exists (fun u -> Poly.(u = FullRefresh)) updates then (
                     DynArray.clear updates;
                     DynArray.add updates FullRefresh;
                 );

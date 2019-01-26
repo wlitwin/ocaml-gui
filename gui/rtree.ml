@@ -19,7 +19,7 @@ let create () = {
 }
 
 let min_child_size = 2
-let max_child_size = 4
+let max_child_size = 10
 
 let bounds = function
     | Leaf l -> l.bounds

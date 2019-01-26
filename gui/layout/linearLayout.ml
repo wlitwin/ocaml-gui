@@ -12,7 +12,10 @@ object(self)
 
     val events = HandlesEvent.create()
 
-    method clear = DynArray.clear items
+    method clear = 
+        DynArray.iter (fun item -> renderObject#removeChild item#renderObject#obj) items;
+        DynArray.clear items
+
     method setDistributeEvenly b = distributeEvenly <- b
 
     method addLayoutable l = 
