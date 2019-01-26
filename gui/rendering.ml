@@ -156,9 +156,9 @@ module Drawable = struct
         group_children : any_object DynArray.t;
     }
 
-    and any_object = Ex : 'a t -> any_object
+    and any_object = Ex : 'a t -> any_object [@@ocaml.boxed]
 
-    and parent_object = P : (unit * 'a) t -> parent_object
+    and parent_object = P : (unit * 'a) t -> parent_object [@@ocaml.boxed]
 
     and group = group_rec
     and view = view_rec
@@ -244,7 +244,6 @@ module Drawable = struct
             | child, {parent=Some (P (Viewport v))} ->
                 let rect = get_rect child in
                 let id = get_id child in
-                (*(get_common child).absolute_z_index <- calc_z_index child;*)
                 SpatialIndex.remove (v.index, id);
                 SpatialIndex.add (v.index, (id, Ex child), rect);
             | child, {parent=Some (P (Group g))} ->
@@ -291,7 +290,9 @@ module Drawable = struct
                     remove_child (ex_p, c);
                     add_child (common, c, p);
                     add_to_nearest_viewport c;
-            | None, p -> add_child (common, c, p)
+            | None, p -> 
+                    add_child (common, c, p);
+                    add_to_nearest_viewport c;
             end;
     ;;
 
@@ -317,9 +318,6 @@ module Drawable = struct
         | cr, text ->
             Graphics.set_color cr text.t_color;
             Graphics.draw_text cr text.font text.t_common.bounds text.text
-            (*let bounds = text.t_common.bounds in
-            Graphics.set_font_info cr text.font;
-            Graphics.draw_text_ cr Pos.{x=bounds.x; y=bounds.y}  text.text*)
 
     let draw_rect : Graphics.context * prim -> unit = function
         | cr, rect ->
