@@ -63,6 +63,7 @@ object(self)
     val vertScroller = new scrollBar app VerticalScroller
     val horzScroller = new scrollBar app HorizontalScroller
     val translation = app#renderer#createViewportObject
+    val border = app#renderer#createRectObject
 
     method setControl c : unit =
         translation#removeChild cont#renderObject#obj;
@@ -86,10 +87,7 @@ object(self)
             | _ -> 1.0, fun _ -> ()
         in
         fn ratio;
-        self#updateTranslation
-
-    method private updateTranslation =
-        translation#setTranslation (rect.x -. self#offsetX, rect.y -. self#offsetY)
+        translation#setTranslation (self#offsetX, self#offsetY)
 
     method! onResize r =
         super#onResize r |> ignore;
@@ -109,8 +107,13 @@ object(self)
                                   y=rect.y +. rect.h -. barSizeH; h=barSizeH; w=rect.w};
         app#renderer#groupUpdates (fun _ ->
             self#updateScrollbarVisibility;
-            self#updateTranslation
-        )
+            translation#setOuterBounds rect;
+            translation#setInnerBounds Rect.{x=self#offsetX;
+                                             y=self#offsetY;
+                                             w; h};
+        );
+        border#setRect r;
+
 
     method private updateScrollbarVisibility =
         let updateBar b =
@@ -154,8 +157,11 @@ object(self)
         cont#preferredSize
 
     initializer
-        translation#setZIndex 1;
-        translation#addChild cont#renderObject#obj;
+        border#setMode Rendering.Stroke;
+        border#setColor Color.black;
         renderObject#removeChild bgRect#obj;
         renderObject#addChild translation#obj;
+        renderObject#addChild border#obj;
+        translation#addChild cont#renderObject#obj;
+        translation#setZIndex 1;
 end

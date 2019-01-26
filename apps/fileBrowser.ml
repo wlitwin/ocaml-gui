@@ -1,8 +1,8 @@
 let strs = [|
-    "1";
-    "2";
-    "3";
-    "4";
+    "1feowijfeowj";
+    "2ofijwoiejfweoij";
+    "3foewjfew";
+    "4oieweofijwfj";
 |]
 
 let build_str () =
@@ -15,7 +15,7 @@ let create_strings =
         if n <= 0 then acc
         else f (build_str() :: acc) (n - 1)
     in
-    f [] 200
+    "00000000000000000000000000000000000" :: f [] 1000
 ;;
 
 let readDir app path =
@@ -49,6 +49,7 @@ object(self)
 
     initializer
         self#setPath "/";
+        fileList#setBGColor Color.red;
         txtPath#events#addFn `KeyDown (object
             method call evt = match evt#arg with
             | `KeyDownArg Keys.Enter -> self#updatePath
@@ -65,7 +66,8 @@ object(self)
             {input_item=lScroll; input_loc={top=bottomOf tPath 10.; left=wLeft 10.; right=wRight ~-.10.; bottom=wBottom ~-.10.}};
         ])) in
         let layout = new ConstraintLayout.constraintLayout rules app#renderer in
-        self#setLayout (layout :> ('a, 'b) Layout.layout)
+        self#setLayout (layout :> ('a, 'b) Layout.layout);
+        (*layout#renderObject#setZIndex 2;*)
 
     inherit ['a, 'b] Focusable.focusManager app [(txtPath :> ('a, 'b) HandlesEvent.handles_event);
                                                  (scroll :> ('a, 'b) HandlesEvent.handles_event)]

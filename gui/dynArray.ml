@@ -57,7 +57,6 @@ let delete t idx =
 ;;
 
 let filter f t =
-    assert Poly.(t.state = Created);
     let write = ref 0 in
     for idx=0 to t.size-1 do
         match f t.storage.(idx) with
@@ -70,7 +69,6 @@ let filter f t =
 ;;
 
 let fold_left f init t =
-    assert Poly.(t.state = Created);
     let acc = ref init in
     for i=0 to t.size-1 do
         acc := f !acc t.storage.(i)

@@ -216,6 +216,32 @@ module Drawable = struct
         loop (0, obj)
     ;; 
 
+    let rec update_z_index : type a. (unit * a) t -> unit = 
+        let rec loop : type a. int * a t -> unit = function
+            | z, Text t ->
+                t.t_common.absolute_z_index <- t.t_common.relative_z_index + z
+            | z, Rect r ->
+                r.p_common.absolute_z_index <- r.p_common.relative_z_index + z
+            | z, Viewport v ->
+                let z = v.v_common.relative_z_index + z in
+                v.v_common.absolute_z_index <- z;
+                DynArray.iter (fun (Ex child) -> loop (z, child)) v.view_children
+            | z, Group g ->
+                let z = g.g_common.relative_z_index + z in
+                g.g_common.absolute_z_index <- z;
+                DynArray.iter (fun (Ex child) -> loop (z, child)) g.group_children
+        in
+        function
+        | Group g as group ->
+            let z_index = calc_z_index group in
+            g.g_common.absolute_z_index <- z_index;
+            DynArray.iter (fun (Ex child) -> loop (z_index, child)) g.group_children
+        | Viewport v as view ->
+            let z_index = calc_z_index view in
+            v.v_common.absolute_z_index <- z_index;
+            DynArray.iter (fun (Ex child) -> loop (z_index, child)) v.view_children
+    ;;
+
     let add_to_nearest_viewport : type a. a t -> unit = 
         let rec loop : type a. a t * common -> unit = function
             | Group g, parent ->
@@ -226,9 +252,9 @@ module Drawable = struct
                     | Ex (Group _ as group) -> loop (group, parent)
                     | Ex (Viewport _ as view) -> loop (view, parent)
                 ) g.group_children;
+                (* And need to update this group's index *)
             | child, {parent=Some (P (Viewport v))} ->
                 let rect = get_rect child in
-                (get_common child).absolute_z_index <- calc_z_index child;
                 SpatialIndex.add (v.index, (get_id child, Ex child), rect);
             | child, {parent=Some (P (Group g))} ->
                 loop (child, g.g_common)
@@ -241,6 +267,12 @@ module Drawable = struct
     let update : type a. a t -> unit = 
         let rec loop : type a. a t * common -> unit = function
             | _, {parent=None} -> ()
+            | Viewport _ as child, {parent=Some (P (Viewport v))} ->
+                let rect = get_rect child in
+                let id = get_id child in
+                Stdio.printf "UPDATEING VIEWPROTING %f %f %f %f\n" rect.x rect.y rect.w rect.h;
+                SpatialIndex.remove (v.index, id);
+                SpatialIndex.add (v.index, (id, Ex child), rect);
             | child, {parent=Some (P (Viewport v))} ->
                 let rect = get_rect child in
                 let id = get_id child in
@@ -283,6 +315,7 @@ module Drawable = struct
         in
         function
         | c, p -> 
+            Stdio.printf "SET_PARENT\n";
             let common = get_common c in
             begin match common.parent, p with
             | Some (P ex_p), p when phys_equal (get_id ex_p) (get_id p) -> ()
@@ -294,10 +327,19 @@ module Drawable = struct
                     add_child (common, c, p);
                     add_to_nearest_viewport c;
             end;
+            (* When the child is an object with children
+             * we need to go through and update all their
+             * z-indices *)
+            match c with
+            | Group _ as group -> update_z_index group
+            | Viewport _ as view -> update_z_index view
+            | Text t -> t.t_common.absolute_z_index <- calc_z_index c
+            | Rect r -> r.p_common.absolute_z_index <- calc_z_index c
     ;;
 
     let unparent : type a. a t -> unit = function
         | child ->
+            let _ = Stdio.printf "UNPARENT PARENT\n" in
             let common = get_common child in
             match common.parent with
             | Some (P p) -> remove_child (p, child)
@@ -334,43 +376,28 @@ module Drawable = struct
         | cr, rect, Group g ->
             DynArray.iter (fun (Ex v) -> draw (cr, rect, v)) g.group_children
         | cr, rect, Viewport v -> 
-            (* TODO - need to transform by the offsets *)
-            SpatialIndex.search (v.index, rect, v.search_results);
+            Graphics.save cr;
+            Graphics.clip_rect cr v.v_common.bounds;
+            let outer = v.v_common.bounds in
+            let inner = v.inner_bounds in
+            let translate_x = v.v_common.bounds.x -. v.inner_bounds.x in
+            let translate_y = v.v_common.bounds.y -. v.inner_bounds.y in
+            Stdio.printf "OFFSET %f %f\n" translate_x translate_y;
+            Stdio.printf "OUTER %f %f %f %f\n" outer.x outer.y outer.w outer.h;
+            Stdio.printf "INNER %f %f %f %f\n" inner.x inner.y inner.w inner.h;
+            Graphics.translate cr translate_x translate_y;
+            let search_rect = Rectangle.{rect with x=rect.x -. translate_x; y=rect.y-.translate_y} in
+            SpatialIndex.search (v.index, search_rect, v.search_results);
             Util.dynarray_sort (v.search_results, (fun ((_, Ex item1), (_, Ex item2)) ->
                 (get_common item1).absolute_z_index - (get_common item2).absolute_z_index
             ));
             DynArray.iter (fun (_, Ex v) -> draw (cr, rect, v)) v.search_results;
+            Graphics.restore cr;
 
     module Common = struct
         let set_pos (c, p : common * Pos.t) =
             c.bounds <- {c.bounds with x=p.x; y=p.y}
     end
-
-    let rec update_z_index : type a. (unit * a) t -> unit = 
-        let rec loop : type a. int * a t -> unit = function
-            | z, Text t ->
-                t.t_common.absolute_z_index <- t.t_common.relative_z_index + z
-            | z, Rect r ->
-                r.p_common.absolute_z_index <- r.p_common.relative_z_index + z
-            | z, Viewport v ->
-                let z = v.v_common.absolute_z_index + z in
-                v.v_common.absolute_z_index <- z;
-                DynArray.iter (fun (Ex child) -> loop (z, child)) v.view_children
-            | z, Group g ->
-                let z = g.g_common.absolute_z_index + z in
-                g.g_common.absolute_z_index <- z;
-                DynArray.iter (fun (Ex child) -> loop (z, child)) g.group_children
-        in
-        function
-        | Group g as group ->
-            let z_index = calc_z_index group in
-            g.g_common.absolute_z_index <- z_index;
-            DynArray.iter (fun (Ex child) -> loop (z_index, child)) g.group_children
-        | Viewport v as view ->
-            let z_index = calc_z_index view in
-            v.v_common.absolute_z_index <- z_index;
-            DynArray.iter (fun (Ex child) -> loop (z_index, child)) v.view_children
-        ;;
 
     let rec count_parents : type a. a t -> int = function
         | obj -> 
@@ -412,16 +439,24 @@ module Drawable = struct
             | Viewport v, rect -> v.inner_bounds <- rect
 
         let set_outer_bounds : (unit * view) t * Rect.t -> unit = function
-            | Viewport v, rect -> v.inner_bounds <- rect
+            | Viewport v as view, rect ->
+                    v.v_common.bounds <- rect;
+                    update view
+        ;;
 
         let set_z_index : (unit * view) t * int -> unit = function
             | Viewport v as view, z_index ->
                 v.v_common.relative_z_index <- z_index;
-                update_z_index view
+                update_z_index view;
+                Stdio.printf "UPDATE Z INDEX (VIEW)\n%s%!"
+                (str_tree view);
         ;;
 
         let get_index : (unit * view) t -> (id, any_object) SpatialIndex.t = function
             | Viewport v -> v.index
+
+        let get_inner_bounds : (unit * view) t -> Rect.t = function
+            | Viewport v -> v.inner_bounds
 
         let get_outer_bounds : (unit * view) t -> Rect.t = function
             | Viewport v -> v.v_common.bounds
@@ -438,7 +473,9 @@ module Drawable = struct
         let set_z_index : (unit * group) t * int -> unit = function
             | Group g as group, z_index ->
                 g.g_common.relative_z_index <- z_index;
-                update_z_index group
+                update_z_index group;
+                Stdio.printf "UPDATE Z INDEX (GROUP)\n%s%!"
+                (str_tree group);
         ;;
 
         let iter : (unit * group) t * (any_object -> unit) -> unit = function
@@ -560,13 +597,13 @@ class groupObject render = object(self)
     val group = Drawable.Group.create()
     val mutable id = ""
 
-    method obj = group
+    method obj = Drawable.Ex group
 
     method setId i = id <- i
-    method addChild : type a. a Drawable.t -> unit = fun c ->
+    method addChild : Drawable.any_object -> unit = fun (Ex c) ->
         Drawable.set_parent (c, group);
 
-    method removeChild : 'a. 'a Drawable.t -> unit = fun c ->
+    method removeChild : Drawable.any_object -> unit = fun (Ex c) ->
         Drawable.unparent c
 
     method setZIndex (z : int) : unit =
@@ -577,25 +614,37 @@ class viewportObject render = object
     val view = Drawable.Viewport.create()
     val mutable id = ""
 
-    method addChild : type a. a Drawable.t -> unit = fun c ->
+    method addChild : Drawable.any_object -> unit = fun (Ex c) ->
         Drawable.set_parent (c, view);
 
-    method removeChild : 'a. 'a Drawable.t -> unit = fun c ->
+    method removeChild : Drawable.any_object -> unit = fun (Ex c) ->
         Drawable.unparent c
 
     method setZIndex (z : int) : unit =
         Drawable.Viewport.set_z_index (view, z);
         render#refreshSingle (Drawable.Viewport.get_outer_bounds view)
 
-    method obj = view
-    method setTranslation (p : Pos.t) : unit = ()
+    method setOuterBounds (r : Rect.t) : unit =
+        let before = Drawable.Viewport.get_outer_bounds view in
+        Drawable.Viewport.set_outer_bounds (view, r);
+        render#refreshChanged (before, r)
+
+    method setInnerBounds (r : Rect.t) : unit =
+        Drawable.Viewport.set_inner_bounds (view, r);
+        render#refreshSingle (Drawable.Viewport.get_outer_bounds view)
+
+    method obj = Drawable.Ex view
+    method setTranslation (x, y : float * float) : unit =
+        let bounds = Drawable.Viewport.get_inner_bounds view in
+        Drawable.Viewport.set_inner_bounds (view, Rect.{bounds with x; y});
+        render#refreshSingle (Drawable.Viewport.get_outer_bounds view);
 end
 
 class rectObject render = object
     val rect = Drawable.Rect.create()
     val mutable id = ""
 
-    method obj = rect
+    method obj = Drawable.Ex rect
 
     method setId i = id <- i
     method setRect (r : Rect.t) : unit =
@@ -621,7 +670,7 @@ class textObject render = object
     val text = Drawable.Text.create()
     val mutable id = ""
 
-    method obj = text
+    method obj = Drawable.Ex text
 
     method setPos (pos : Pos.t) : unit =
         let before = Drawable.Text.get_bounds text in
@@ -653,7 +702,7 @@ class renderer = object(self)
     val mutable updates : update_type DynArray.t = DynArray.create ~capacity:10 ()
     val root = Drawable.Viewport.create()
 
-    method setRoot : 'a. 'a Drawable.t -> unit = fun obj ->
+    method setRoot : Drawable.any_object -> unit = fun (Ex obj) ->
         Drawable.set_parent (obj, root)
 
     method createGroupObject = new groupObject self
@@ -681,7 +730,9 @@ class renderer = object(self)
         self#requestDraw
 
     val mutable size = Size.zero
-    method setSize s = size <- s
+    method setSize (s : Size.t) : unit =
+        Drawable.Viewport.set_outer_bounds (root, Rect.{x=0.; y=0.; w=s.w; h=s.h});
+        size <- s
 
     method refreshFull =
         if shouldUpdate then (

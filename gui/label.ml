@@ -11,8 +11,7 @@ object(self)
 
     method! onResize r =
         super#onResize r;
-        let fe : Font.font_extents = textObject#fontExtents in
-        textObject#setPos Pos.{x=rect.x; y=rect.y+.fe.Font.ascent};
+        textObject#setPos Pos.{x=rect.x; y=rect.y};
 
     initializer
         textObject#setZIndex 1;
