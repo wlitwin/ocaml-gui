@@ -1,35 +1,5 @@
 let _ = Random.init 102493
 
-class ['a, 'b] tree_drawing app = 
-object
-    inherit ['a, 'b] Widget.basicWidget app as super
-
-    method! onResize r =
-        let mk_text cnt =
-            let s = [|"H"; "e"; "l"; "l"; "o"; " "; "W"; "o"; "r"; "l"; "d"; "!"|] in
-            let rec loop cnt acc =
-                if cnt < 0 then acc
-                else (
-                    let rx = Random.float (r.w*.0.85) in
-                    let ry = Random.float (r.h*.0.85) in
-                    let str = s.(Random.int 12) ^ s.(Random.int 12) ^ s.(Random.int 12) ^ s.(Random.int 12) in
-                    loop (cnt-1) (Rendering.fill_text str Font.default_font Color.black Pos.{x=r.x+.rx; y=r.y+.ry} :: acc)
-                )
-            in
-            loop cnt []
-        in
-        renderObject#setContent (Group [
-            (1, [Rendering.fill_rect r Color.green;
-                 Rendering.stroke_rect r Color.black; 
-                ]);
-            (2, [Rendering.fill_text "Hello World!" Font.default_font Color.black Pos.{x=r.x; y=r.y+.20.};
-                 Rendering.fill_rect Rect.{x=r.x; y=r.y+.r.h*.0.5; w=r.w; h=r.h*.0.5} Color.orange] @ mk_text 100);
-        ])
-
-    initializer
-        renderObject#detach (bgRect :> Rendering.nodeObject)
-end
-
 class ['a, 'b] simple app =
     let label1 = new TextBox.textBoxWidget app in
 object(self)

@@ -20,7 +20,7 @@ class ['a, 'b] basicWidget app = object(self)
 
     method setLayout (l : ('a, 'b) #Layout.layout) =
         layout <- Some l;
-        self#renderObject#attach l#renderObject;
+        self#renderObject#addChild l#renderObject#obj
 
     method contentSize = 
         match layout with
@@ -51,6 +51,6 @@ class ['a, 'b] basicWidget app = object(self)
     initializer
         self#setBGColor style#bgColor;
         bgRect#setId "BGRECT";
-        renderObject#attach (bgRect :> Rendering.nodeObject);
+        renderObject#addChild bgRect#obj;
         rect <- Rect.{x=0.; y=0.; w=10.; h=10.}
 end

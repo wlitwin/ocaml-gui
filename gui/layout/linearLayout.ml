@@ -17,13 +17,13 @@ object(self)
 
     method addLayoutable l = 
         DynArray.add items (l :> ('a, 'b) Layoutable.layoutable);
-        renderObject#attach l#renderObject
+        renderObject#addChild l#renderObject#obj
 
     method removeLayoutable id =
         DynArray.filter (fun l -> 
             if l#id <> id then true
             else (
-                renderObject#detach l#renderObject;
+                renderObject#removeChild l#renderObject#obj;
                 false
             )
         ) items;

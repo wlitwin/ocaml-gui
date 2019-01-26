@@ -107,17 +107,16 @@ class ['a, 'b] textBoxWidget app = object(self)
         cursorObject#setRect Rect.{x=rect.x+.size.w; y=rect.y; w=2.; h=size.h}
 
     method! onFocused =
-        renderObject#attach (cursorObject :> Rendering.nodeObject)
+        renderObject#addChild cursorObject#obj;
 
     method! onUnfocused =
-        renderObject#detach (cursorObject :> Rendering.nodeObject)
+        renderObject#removeChild cursorObject#obj;
 
     method! onResize r =
         super#onResize r;
         border#setRect rect;
-        let fe : Font.font_extents = textObject#fontExtents in
         app#renderer#groupUpdates (fun _ ->
-            textObject#setPos Pos.{x=rect.x; y=rect.y+.fe.Font.ascent};
+            textObject#setPos Pos.{x=rect.x; y=rect.y};
             self#updateCursor
         )
 
@@ -125,8 +124,8 @@ class ['a, 'b] textBoxWidget app = object(self)
         self#setBGColor Color.white;
         border#setMode Rendering.Stroke;
         border#setColor Color.black;
-        renderObject#attach (border :> Rendering.nodeObject);
-        renderObject#attach (textObject :> Rendering.nodeObject);
+        renderObject#addChild border#obj;
+        renderObject#addChild textObject#obj;
         cursorObject#setId "cursor";
         textObject#setId "text";
         border#setId "border";

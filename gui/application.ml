@@ -32,7 +32,7 @@ object(self)
     method widget = Option.value_exn widget
     method setWidget w = 
         widget <- Some w;
-        renderer#setRoot w#renderObject
+        renderer#setRoot w#renderObject#obj
 
     method resize (size : Size.t) =
          Util.timeit "resize" (fun _ ->

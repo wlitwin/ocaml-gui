@@ -82,69 +82,6 @@ type text_list = {
 
 type obj = < >
 
-class nodeObject renderer = object(self)
-    val mutable content = Group [0, []]
-    val mutable children : nodeObject DynArray.t = DynArray.create ~capacity:1 ()
-    val renderer = renderer
-    val mutable z_index = 0
-    val mutable parent : nodeObject option = None
-    val mutable identifier : string = ""
-
-    method rect = Rect.empty
-
-    method id = identifier
-    method setId id = identifier <- id
-
-    method zIndex = z_index
-    method setZIndex z = z_index <- z
-
-    method fullZIndex =
-        let rec loop idx = function
-            | None -> idx
-            | Some p -> loop (idx + p#zIndex) p#parent
-        in
-        loop z_index parent
-
-    method parent = parent
-    method setParent p = parent <- p
-
-    method content = content
-    method setContent c : unit = 
-        let old_rect = self#rect in
-        content <- c;
-        renderer#removeObject (self :> nodeObject);
-        renderer#addObject (self :> nodeObject);
-        renderer#refreshChanged ((self :> nodeObject), old_rect);
-
-    method toString = identifier
-
-    method attach (obj : nodeObject) : unit  =
-        renderer#groupUpdates (fun _ ->
-            match obj#parent with
-            | None -> 
-                obj#setParent (Some (self :> nodeObject));
-                DynArray.add children obj;
-                renderer#addObject obj;
-                renderer#refreshChanged ((obj :> nodeObject), obj#rect)
-            | Some p when phys_equal p (self :> nodeObject) -> ()
-            | Some p -> 
-                p#detach obj;
-                obj#setParent (Some (self :> nodeObject));
-                renderer#addObject obj;
-        );
-
-    method draw (cr : Platform.Windowing.Graphics.context) : unit =
-        DynArray.iter (fun child ->
-            child#draw cr
-        ) children
-
-    method detach (obj : nodeObject) : unit =
-        obj#setParent None;
-        DynArray.filter (fun o -> not (phys_equal obj o)) children;
-        renderer#refreshChanged ((obj :> nodeObject), obj#rect);
-        renderer#removeObject obj;
-end
-
 module SpatialIndex = struct
     module HP = Hashtbl.Poly
 
@@ -161,7 +98,7 @@ module SpatialIndex = struct
     }
 
     let add (t, (key, obj), rect) =
-        if not (HP.mem t.object_table key) then (
+        if not (Rect.is_empty rect) && not (HP.mem t.object_table key) then (
             HP.set t.object_table key rect;
             Rtree.insert (t.rtree, rect, (key, obj));
         )
@@ -187,6 +124,8 @@ module Drawable = struct
     type common = {
         mutable parent : parent_object option;
         mutable bounds : Rect.t;
+        mutable relative_z_index : int;
+        mutable absolute_z_index : int;
         id : id;
     }
 
@@ -257,12 +196,25 @@ module Drawable = struct
                     | Ex (Group _ as group) -> loop (group, parent)
                     | Ex (Viewport _ as view) -> loop (view, parent)
                 ) g.group_children;
-            | c, {parent=Some (P (Viewport v))} -> SpatialIndex.remove (v.index, get_id c)
+            | c, {parent=Some (P (Viewport v))} ->
+                    SpatialIndex.remove (v.index, get_id c)
             | c, {parent=Some (P (Group g))} -> loop (c, g.g_common)
         in
         function
         | child -> loop (child, get_common child)
     ;;
+
+    let calc_z_index : type a. a t -> int = fun obj ->
+        let rec loop : type a. int * a t -> int = function 
+            | z, obj ->
+                let common = get_common obj in
+                let z = z + common.relative_z_index in
+                match common.parent with
+                | None -> z
+                | Some (P p) -> loop (z, p)
+        in
+        loop (0, obj)
+    ;; 
 
     let add_to_nearest_viewport : type a. a t -> unit = 
         let rec loop : type a. a t * common -> unit = function
@@ -276,6 +228,7 @@ module Drawable = struct
                 ) g.group_children;
             | child, {parent=Some (P (Viewport v))} ->
                 let rect = get_rect child in
+                (get_common child).absolute_z_index <- calc_z_index child;
                 SpatialIndex.add (v.index, (get_id child, Ex child), rect);
             | child, {parent=Some (P (Group g))} ->
                 loop (child, g.g_common)
@@ -291,6 +244,7 @@ module Drawable = struct
             | child, {parent=Some (P (Viewport v))} ->
                 let rect = get_rect child in
                 let id = get_id child in
+                (*(get_common child).absolute_z_index <- calc_z_index child;*)
                 SpatialIndex.remove (v.index, id);
                 SpatialIndex.add (v.index, (id, Ex child), rect);
             | child, {parent=Some (P (Group g))} ->
@@ -353,6 +307,8 @@ module Drawable = struct
         parent=None;
         id=object end;
         bounds=Rect.empty;
+        relative_z_index=0;
+        absolute_z_index=0;
     }
 
     module Rectangle = Rect
@@ -361,12 +317,17 @@ module Drawable = struct
         | cr, text ->
             Graphics.set_color cr text.t_color;
             Graphics.draw_text cr text.font text.t_common.bounds text.text
+            (*let bounds = text.t_common.bounds in
+            Graphics.set_font_info cr text.font;
+            Graphics.draw_text_ cr Pos.{x=bounds.x; y=bounds.y}  text.text*)
 
     let draw_rect : Graphics.context * prim -> unit = function
         | cr, rect ->
             Graphics.set_color cr rect.color;
             Graphics.rectangle cr rect.p_common.bounds;
-            Graphics.fill cr
+            match rect.fill_type with
+            | Fill -> Graphics.fill cr
+            | Stroke -> Graphics.stroke cr
 
     let rec draw : type a. Graphics.context * Rectangle.t * a t -> unit = 
         function
@@ -377,12 +338,68 @@ module Drawable = struct
         | cr, rect, Viewport v -> 
             (* TODO - need to transform by the offsets *)
             SpatialIndex.search (v.index, rect, v.search_results);
+            Util.dynarray_sort (v.search_results, (fun ((_, Ex item1), (_, Ex item2)) ->
+                (get_common item1).absolute_z_index - (get_common item2).absolute_z_index
+            ));
             DynArray.iter (fun (_, Ex v) -> draw (cr, rect, v)) v.search_results;
 
     module Common = struct
         let set_pos (c, p : common * Pos.t) =
             c.bounds <- {c.bounds with x=p.x; y=p.y}
     end
+
+    let rec update_z_index : type a. (unit * a) t -> unit = 
+        let rec loop : type a. int * a t -> unit = function
+            | z, Text t ->
+                t.t_common.absolute_z_index <- t.t_common.relative_z_index + z
+            | z, Rect r ->
+                r.p_common.absolute_z_index <- r.p_common.relative_z_index + z
+            | z, Viewport v ->
+                let z = v.v_common.absolute_z_index + z in
+                v.v_common.absolute_z_index <- z;
+                DynArray.iter (fun (Ex child) -> loop (z, child)) v.view_children
+            | z, Group g ->
+                let z = g.g_common.absolute_z_index + z in
+                g.g_common.absolute_z_index <- z;
+                DynArray.iter (fun (Ex child) -> loop (z, child)) g.group_children
+        in
+        function
+        | Group g as group ->
+            let z_index = calc_z_index group in
+            g.g_common.absolute_z_index <- z_index;
+            DynArray.iter (fun (Ex child) -> loop (z_index, child)) g.group_children
+        | Viewport v as view ->
+            let z_index = calc_z_index view in
+            v.v_common.absolute_z_index <- z_index;
+            DynArray.iter (fun (Ex child) -> loop (z_index, child)) v.view_children
+        ;;
+
+    let rec count_parents : type a. a t -> int = function
+        | obj -> 
+            match (get_common obj).parent with
+            | None -> 0
+            | Some (P p) -> count_parents p + 1
+    ;;
+
+    let rec str_tree : type a. a t -> string = function
+        | obj ->
+            let pad idnt = String.make idnt ' ' in
+            let rec loop : type a. a t * int -> string = function
+                | Rect r, idnt -> Printf.sprintf "%srect %d (%d) [%d]\n" (pad idnt) r.p_common.absolute_z_index r.p_common.relative_z_index (calc_z_index (Rect r))
+                | Text t, idnt -> Printf.sprintf "%stext %d (%d) [%d]\n" (pad idnt) t.t_common.absolute_z_index t.t_common.relative_z_index (calc_z_index (Text t))
+                | Group g, idnt ->
+                    Printf.sprintf "%sgroup %d (%d) [%d]\n%s" (pad idnt) g.g_common.absolute_z_index g.g_common.relative_z_index (calc_z_index (Group g))
+                    (DynArray.fold_left (fun acc (Ex obj) ->
+                        acc ^ loop (obj, idnt+2)
+                    ) "" g.group_children)
+                | Viewport v, idnt ->
+                    Printf.sprintf "%sview %d (%d) [%d]\n%s" (pad idnt) v.v_common.absolute_z_index v.v_common.relative_z_index (calc_z_index (Viewport v))
+                    (DynArray.fold_left (fun acc (Ex obj) ->
+                        acc ^ loop (obj, idnt+2)
+                    ) "" v.view_children)
+            in
+            loop (obj, 0)
+    ;;
 
     module Viewport = struct
         let create ?(outer_bounds=Rect.empty) ?(inner_bounds=Rect.empty) () = Viewport {
@@ -399,6 +416,18 @@ module Drawable = struct
         let set_outer_bounds : (unit * view) t * Rect.t -> unit = function
             | Viewport v, rect -> v.inner_bounds <- rect
 
+        let set_z_index : (unit * view) t * int -> unit = function
+            | Viewport v as view, z_index ->
+                v.v_common.relative_z_index <- z_index;
+                update_z_index view
+        ;;
+
+        let get_index : (unit * view) t -> (id, any_object) SpatialIndex.t = function
+            | Viewport v -> v.index
+
+        let get_outer_bounds : (unit * view) t -> Rect.t = function
+            | Viewport v -> v.v_common.bounds
+
         let iter : ((unit * view) t * (any_object -> unit)) -> unit = function
             | Viewport v, f -> DynArray.iter f v.view_children 
     end
@@ -407,6 +436,12 @@ module Drawable = struct
         let create ?(children=[]) () = Group {
             group_children=DynArray.of_list children; g_common=common();
         }
+
+        let set_z_index : (unit * group) t * int -> unit = function
+            | Group g as group, z_index ->
+                g.g_common.relative_z_index <- z_index;
+                update_z_index group
+        ;;
 
         let iter : (unit * group) t * (any_object -> unit) -> unit = function
             | Group g, f -> DynArray.iter f g.group_children
@@ -421,6 +456,9 @@ module Drawable = struct
             t_common=common();
         }
 
+        let get_font : text t -> Font.t = function
+            | Text t -> t.font
+
         let update_text : text t -> unit = function
             | Text t as text ->
                 let size = measure_text (t.font, t.text) in
@@ -430,6 +468,12 @@ module Drawable = struct
                 };
                 update text
         ;;
+
+        let get_text : text t -> string = function
+            | Text t -> t.text
+
+        let get_bounds : text t -> Rectangle.t = function
+            | Text t -> t.t_common.bounds
 
         let set_text : text t * string -> unit = function
             | Text t as text, str -> 
@@ -448,6 +492,12 @@ module Drawable = struct
                 Common.set_pos (t.t_common, pos);
                 update_text text;
         ;;
+
+        let set_z_index : text t * int -> unit = function
+            | Text t as text, z_index ->
+                t.t_common.relative_z_index <- z_index;
+                t.t_common.absolute_z_index <- calc_z_index text;
+        ;;
     end
 
     module Rect = struct
@@ -458,17 +508,32 @@ module Drawable = struct
                 p_common=common();
             }
 
+        let get_rect : prim t -> Rectangle.t = function
+            | Rect r -> r.p_common.bounds
+
         let set_rect : prim t * Rect.t -> unit = function
             | Rect r as r_tag, rect -> 
                 r.p_common.bounds <- rect;
                 update r_tag;
         ;;
 
-        let set_color : prim t * Color.t -> unit = function
-            | Rect r as r_tag, color ->
-                r.color <- color;
-                update r_tag;
+        let set_z_index : prim t * int -> unit = function
+            | Rect r as rect, z_index ->
+                r.p_common.relative_z_index <- z_index;
+                r.p_common.absolute_z_index <- calc_z_index rect;
         ;;
+
+        let set_mode : prim t * draw_type -> unit = function
+            | Rect r, fill_type -> r.fill_type <- fill_type
+        ;;
+
+        let set_color : prim t * Color.t -> unit = function
+            | Rect r, color ->
+                r.color <- color;
+        ;;
+
+        let get_bounds : prim t -> Rectangle.t = function
+            | Rect r -> r.p_common.bounds
 
         let set_pos : prim t * Pos.t -> unit = function
             | Rect r as r_tag, pos -> 
@@ -478,181 +543,9 @@ module Drawable = struct
     end
 end
 
-module Layer = struct
-
-let calc_z obj =
-    let rec loop (obj, z_index) =
-        match obj#parent with
-        | None -> z_index
-        | Some p -> loop (p, z_index + p#zIndex)
-    in
-    loop (obj, 0)
-;;
-
-let calc_rect (obj, rect) =
-    let rec loop (obj, rect) =
-        match obj#parent with
-        | None -> rect
-        | Some p ->
-            match p#content with
-            | Translate pos -> loop (p, Rect.({rect with x=rect.x+.pos.x; y=rect.y+.pos.y}))
-            | _ -> loop (p, rect)
-    in
-    loop (obj, rect)
-;;
-
-type layer = {
-    z_index : int;
-    prims : nodeObject DynArray.t;
-}
-
-type render_state = {
-    layers : layer DynArray.t;
-}
-
-end
-
-class groupObject renderer = object(self)
-    inherit nodeObject renderer
-end
-
-class primObject renderer = object(self)
-    inherit nodeObject renderer
-
-    method private prim =
-        match self#content with
-        | Primitive prim -> prim
-        | _ -> failwith "Invalid prim"
-
-    method setColor color =
-        self#setContent (Primitive {self#prim with color})
-
-    method setMode draw_type = 
-        self#setContent (Primitive {self#prim with draw_type})
-
-    method pos : Pos.t = self#prim.pos
-
-    method setPos pos = 
-        self#setContent (Primitive {self#prim with pos})
-end
-
-class textObject renderer = object(self)
-    inherit primObject renderer
-
-    method private text_info =
-        match self#prim.shape_type with
-        | Text ti -> ti
-        | _ -> failwith "Invalid text object"
-
-    method text = self#text_info.text
-    method font = self#text_info.font
-
-    method! toString = "T[" ^ identifier ^ "][" ^ self#text ^ "]"
-
-    method fontExtents : Font.font_extents =
-        renderer#fontExtents self#font
-
-    method size = self#text_info.size
-
-    method! rect =
-        let prim = self#prim in
-        let ascent = self#fontExtents.ascent in
-        let size = self#text_info.size in
-        Rect.{x=prim.pos.x; y=prim.pos.y-.ascent; w=size.w; h=size.h}
-
-    method setText text =
-        let ti = self#text_info in
-        let size = measure_text(ti.font, text) in
-        self#setContent (Primitive {self#prim with shape_type=Text {ti with text; size}});
-
-    method setFont font =
-        self#setContent (Primitive {self#prim with shape_type=Text {self#text_info with font}})
-
-    method! draw cr =
-        let rect = Layer.calc_rect ((self :> nodeObject), self#rect) in
-        let ti = self#text_info in
-        let prim = self#prim in
-        Graphics.set_color cr prim.color;
-        Graphics.draw_text cr ti.font rect ti.text
-
-    initializer
-        content <- (Primitive {
-            pos=Pos.zero;
-            draw_type=Fill;
-            shape_type=Text {text=""; font=Font.default_font; size=Size.zero};
-            color=Color.black;
-        })
-end
-
-class rectObject renderer = object(self)
-    inherit primObject renderer
-
-    method setSize (size : Size.t) =
-        self#setContent (Primitive {self#prim with
-            shape_type=Rectangle size
-        })
-
-    method size =
-        match self#prim.shape_type with
-        | Rectangle size -> size
-        | _ -> failwith "Should be rectangle"
-
-    method! rect =
-        let prim = self#prim in
-        let size = self#size in
-        Rect.{x=prim.pos.x; y=prim.pos.y; w=size.w; h=size.h}
-
-    method setRect (r : Rect.t) =
-        self#setContent (Primitive {self#prim with 
-            pos=Pos.{x=r.x; y=r.y}; 
-            shape_type=Rectangle Size.{w=r.w; h=r.h}
-        })
-
-    method! toString = 
-        let color = self#prim.color in
-        Printf.sprintf "R[%s][%.2f %.2f %.2f]" identifier color.r color.g color.b
-
-    method! draw cr =
-        let rect = Layer.calc_rect ((self :> nodeObject), self#rect) in
-        let prim = self#prim in
-        Graphics.set_color cr prim.color;
-        Graphics.rectangle cr rect;
-        match prim.draw_type with
-        | Fill -> Graphics.fill cr
-        | Stroke -> Graphics.stroke cr
-
-    initializer
-        content <- (Primitive {
-            pos=Pos.zero;
-            draw_type=Fill;
-            shape_type=Rectangle Size.{w=100.; h=100.};
-            color=Color.red;
-        })
-end
-
-class translateObject renderer = object(self)
-    inherit nodeObject renderer
-
-    method setTranslation (x, y : float * float) : unit =
-        (*
-        self#setContent (Translate Pos.{x; y});
-        renderer#refreshSingle (self :> nodeObject)
-        *)
-        ()
-
-    method! attach obj =
-        ()
-
-    method! detach obj =
-        ()
-
-    method! draw (cr : Platform.Windowing.Graphics.context) : unit =
-        ()
-end
-
 module Dirty = struct
 type t = NotDirty
-       | SingleUpdate of nodeObject * Rect.t
+       | SingleUpdate of Rect.t
        | RenderAll
 
 let is_dirty = function
@@ -665,44 +558,116 @@ type update_type =
     | Changed of Rect.t * Rect.t
     | FullRefresh
 
+class groupObject render = object(self)
+    val group = Drawable.Group.create()
+    val mutable id = ""
+
+    method obj = group
+
+    method setId i = id <- i
+    method addChild : type a. a Drawable.t -> unit = fun c ->
+        Drawable.set_parent (c, group);
+
+    method removeChild : 'a. 'a Drawable.t -> unit = fun c ->
+        Drawable.unparent c
+
+    method setZIndex (z : int) : unit =
+        Drawable.Group.set_z_index (group, z);
+end
+
+class viewportObject render = object
+    val view = Drawable.Viewport.create()
+    val mutable id = ""
+
+    method addChild : type a. a Drawable.t -> unit = fun c ->
+        Drawable.set_parent (c, view);
+
+    method removeChild : 'a. 'a Drawable.t -> unit = fun c ->
+        Drawable.unparent c
+
+    method setZIndex (z : int) : unit =
+        Drawable.Viewport.set_z_index (view, z);
+        render#refreshSingle (Drawable.Viewport.get_outer_bounds view)
+
+    method obj = view
+    method setTranslation (p : Pos.t) : unit = ()
+end
+
+class rectObject render = object
+    val rect = Drawable.Rect.create()
+    val mutable id = ""
+
+    method obj = rect
+
+    method setId i = id <- i
+    method setRect (r : Rect.t) : unit =
+        let before = Drawable.Rect.get_rect rect in
+        Drawable.Rect.set_rect (rect, r);
+        let after = Drawable.Rect.get_rect rect in
+        render#refreshChanged (before, after)
+
+    method setColor (color : Color.t) : unit =
+        Drawable.Rect.set_color (rect, color);
+        render#refreshSingle (Drawable.get_rect rect);
+
+    method setZIndex (z : int) : unit =
+        Drawable.Rect.set_z_index (rect, z);
+        render#refreshSingle (Drawable.Rect.get_bounds rect);
+
+    method setMode (m : draw_type) : unit =
+        Drawable.Rect.set_mode (rect, m);
+        render#refreshSingle (Drawable.get_rect rect);
+end
+
+class textObject render = object
+    val text = Drawable.Text.create()
+    val mutable id = ""
+
+    method obj = text
+
+    method setPos (pos : Pos.t) : unit =
+        let before = Drawable.Text.get_bounds text in
+        Drawable.Text.set_pos (text, pos);
+        let after = Drawable.Text.get_bounds text in
+        render#refreshChanged (before, after)
+
+    method setText (str : string) : unit =
+        let before = Drawable.Text.get_bounds text in
+        Drawable.Text.set_text (text, str);
+        let after = Drawable.Text.get_bounds text in
+        render#refreshChanged (before, after)
+
+    method size : Size.t = 
+        let r = Drawable.Text.get_bounds text in
+        Size.{w=r.w; h=r.h}
+
+    method text = Drawable.Text.get_text text
+    method fontExtents : Font.font_extents = render#fontExtents Font.default_font
+    method font = Drawable.Text.get_font text
+    method setId i = id <- i
+    method setZIndex (z : int) : unit =
+        Drawable.Text.set_z_index (text, z);
+        render#refreshSingle (Drawable.Text.get_bounds text);
+end
+
 class renderer = object(self)
-    val mutable root = new nodeObject (object 
-        method groupUpdates _ = ()
-        method refreshChanged _ = ()
-        method refreshFull _ = ()
-        method addObject _ = ()
-        method removeObject _ = ()
-    end)
     val mutable requestDraw : unit -> unit = fun _ -> ()
     val mutable updates : update_type DynArray.t = DynArray.create ~capacity:10 ()
+    val root = Drawable.Viewport.create()
 
-    val index : (nodeObject, unit) SpatialIndex.t = SpatialIndex.create (fun o1 (o2, _) -> phys_equal o1 o2)
-    val searchResults : (nodeObject * unit) DynArray.t = DynArray.create ~capacity:100 ()
+    method setRoot : 'a. 'a Drawable.t -> unit = fun obj ->
+        Drawable.set_parent (obj, root)
 
-    method root = root
-    method setRoot r = 
-        root <- r;
-
-    method fontExtents font : Font.font_extents =
-        Graphics.font_extents_no_context font
-
-    method createTextObject = new textObject self
-    method createRectObject = new rectObject self
     method createGroupObject = new groupObject self
-    method createTranslateObject = new translateObject self
+    method createRectObject = new rectObject self
+    method createTextObject = new textObject self
+    method createViewportObject = new viewportObject self 
+
+    method fontExtents (font : Font.t) : Font.font_extents =
+        Graphics.font_extents_no_context font
 
     val mutable drawEnabled = true
     val mutable shouldUpdate = true
-
-    method addObject (obj : nodeObject) : unit =
-        let rect = obj#rect in
-        if not (Rect.is_empty rect) && Option.is_some obj#parent then (
-            let rect = Layer.calc_rect (obj, obj#rect) in
-            SpatialIndex.add (index, (obj, ()), rect);
-        )
-
-    method removeObject (obj : nodeObject) : unit =
-        SpatialIndex.remove (index, obj);
 
     method ignoreUpdates (f : unit -> unit) : unit =
         let before = shouldUpdate in
@@ -710,7 +675,7 @@ class renderer = object(self)
         f();
         shouldUpdate <- before;
 
-    method groupUpdates f =
+    method groupUpdates (f : unit -> unit) : unit =
         let before = drawEnabled in
         drawEnabled <- false;
         f();
@@ -727,18 +692,15 @@ class renderer = object(self)
             self#requestDraw
         )
 
-    method refreshChanged (obj, old_rect) =
+    method refreshChanged (old, new_) =
         if shouldUpdate then (
             (*Stdio.printf "ADDING REFRESH CHANGED %s\n%!" obj#toString;*)
-            let rect = Layer.calc_rect (obj, obj#rect)
-            and old_rect = Layer.calc_rect (obj, old_rect) in
-            DynArray.add updates (Changed (rect, old_rect));
+            DynArray.add updates (Changed (old, new_));
         )
 
-    method refreshSingle (obj : nodeObject) =
+    method refreshSingle rect =
         if shouldUpdate then (
             (*Stdio.printf "ADDING REFRESH SINGLE %s\n%!" obj#toString;*)
-            let rect = Layer.calc_rect (obj, obj#rect) in
             DynArray.add updates (Refresh rect)
         )
 
@@ -765,24 +727,15 @@ class renderer = object(self)
         Graphics.draw_text_ cr Pos.{x=0.; y=size.h -. 2.} text;
 
     method renderRefresh (cr, rect) =
-        let open Rect in
         (*Stdio.printf "REFRESH RECT %.2f %.2f %.2f %.2f\n%!" rect.x rect.y rect.w rect.h;*)
         Graphics.clip_rect cr rect;
         let _, s1 = Util.time (fun _ ->
-            SpatialIndex.search (index , rect, searchResults);
-            Util.dynarray_sort (searchResults, fun ((obj1, _), (obj2, _)) ->
-                obj1#fullZIndex - obj2#fullZIndex
-            );
+            Drawable.draw (cr, rect, root)
         ) in
-        (*Stdio.printf "SEARCH FOUND %d\n%!" (DynArray.length searchResults);*)
-        DynArray.iter (fun (obj, _) ->
-            (*Stdio.printf "DRAWING %s\n%!" obj#toString;*)
-            obj#draw cr
-        ) searchResults;
         Graphics.clip_reset cr;
         s1
 
-    method renderChanged (cr, rect, old_rect) =
+    method renderChanged (cr, old_rect, rect) =
         (* Draw over old rect *)
         let s1 = self#renderRefresh (cr, old_rect)
         and s2 = self#renderRefresh (cr, rect) in
@@ -798,15 +751,23 @@ class renderer = object(self)
             Graphics.fill cr;
         in*)
         if drawEnabled && DynArray.length updates > 0 then begin
-            (*
             let print_tree () = 
-                Stdio.printf "%s\n%!" (Test_rtree.str_tree rtree
-                    (fun n -> n#toString)
-                    (fun obj -> Layer.calc_rect (obj, obj#rect))
+                Stdio.printf "%s\n%!" (Test_rtree.str_tree (Drawable.Viewport.get_index root).rtree
+                    (fun (id, Ex obj) -> 
+                        Printf.sprintf "%s %d" 
+                        (match obj with
+                        | Rect _ -> "rect"
+                        | Text _ -> "text"
+                        | Group _ -> "group"
+                        | Viewport _ -> "view"
+                        )
+                        Drawable.(get_common obj).absolute_z_index
+                    )
+                    (fun (id, Ex obj) -> (Drawable.get_common obj).bounds)
                 )
             in
             print_tree();
-            *)
+            Caml.print_endline (Drawable.str_tree root);
             let searchTime, drawTime = Util.time (fun _ ->
                 (* Check if there is a FullRefresh, if so, ignore everything else *)
                 if DynArray.exists (fun u -> Poly.(u = FullRefresh)) updates then (
@@ -819,8 +780,8 @@ class renderer = object(self)
                         match update with
                         | Refresh rect ->
                             self#renderRefresh (cr, rect)
-                        | Changed (rect, old_rect) ->
-                            self#renderChanged (cr, rect, old_rect)
+                        | Changed (old_rect, new_rect) ->
+                            self#renderChanged (cr, old_rect, new_rect)
                         | FullRefresh ->
                             self#renderRefresh (cr, Rect.{x=0.; y=0.; w=size.w; h=size.h})
                     in

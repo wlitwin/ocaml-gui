@@ -269,6 +269,6 @@ object(self)
     initializer
         renderObject#setZIndex 1;
         DynArray.iter (fun item ->
-            self#renderObject#attach item#renderObject
+            self#renderObject#addChild item#renderObject#obj
         ) items
 end

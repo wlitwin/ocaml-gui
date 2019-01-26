@@ -49,7 +49,7 @@ class ['a, 'b] scrollBar app scrollType = object(self)
         scrollBar#setColor Color.black;
         scrollBar#setZIndex 3;
         renderObject#setZIndex 2;
-        renderObject#attach (scrollBar :> Rendering.nodeObject);
+        renderObject#addChild scrollBar#obj;
         self#updateBar;
 end
 
@@ -62,12 +62,12 @@ object(self)
     val mutable vert = true
     val vertScroller = new scrollBar app VerticalScroller
     val horzScroller = new scrollBar app HorizontalScroller
-    val translation = app#renderer#createTranslateObject
+    val translation = app#renderer#createViewportObject
 
     method setControl c : unit =
-        translation#detach cont#renderObject;
+        translation#removeChild cont#renderObject#obj;
         cont <- c;
-        translation#attach cont#renderObject;
+        translation#addChild cont#renderObject#obj;
 
     method! onKeyDown k =
         let ratio, fn = 
@@ -114,8 +114,8 @@ object(self)
 
     method private updateScrollbarVisibility =
         let updateBar b =
-            if Float.(b#ratio < 1.0) then (renderObject#attach b#renderObject)
-            else (renderObject#detach b#renderObject)
+            if Float.(b#ratio < 1.0) then (renderObject#addChild b#renderObject#obj)
+            else (renderObject#removeChild b#renderObject#obj)
         in
         updateBar vertScroller;
         updateBar horzScroller;
@@ -155,7 +155,7 @@ object(self)
 
     initializer
         translation#setZIndex 1;
-        translation#attach cont#renderObject;
-        renderObject#detach (bgRect :> Rendering.nodeObject);
-        renderObject#attach (translation :> Rendering.nodeObject);
+        translation#addChild cont#renderObject#obj;
+        renderObject#removeChild bgRect#obj;
+        renderObject#addChild translation#obj;
 end
