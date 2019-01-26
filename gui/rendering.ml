@@ -148,114 +148,267 @@ end
 module SpatialIndex = struct
     module HP = Hashtbl.Poly
 
-    type 'a t = {
-        rtree : 'a Rtree.t;
+    type ('a, 'b) t = {
+        rtree : ('a * 'b) Rtree.t;
         object_table : ('a, Rect.t) HP.t;
+        cmp : 'a -> ('a * 'b) -> bool;
     }
 
-    let create () = {
+    let create cmp = {
         rtree = Rtree.create();
         object_table = HP.create();
+        cmp;
     }
 
-    let add (t, obj, rect) =
-        if not (HP.mem t.object_table obj) then (
-            HP.set t.object_table obj rect;
-            Rtree.insert (t.rtree, rect, obj);
+    let add (t, (key, obj), rect) =
+        if not (HP.mem t.object_table key) then (
+            HP.set t.object_table key rect;
+            Rtree.insert (t.rtree, rect, (key, obj));
         )
 
     let search (t, rect, results) =
         Rtree.search (t.rtree, rect, results)
 
-    let remove (t, obj) =
-        if HP.mem t.object_table obj then (
-            let rect = HP.find_exn t.object_table obj in
-            HP.remove t.object_table obj;
-            Rtree.delete (t.rtree, rect, (fun o -> phys_equal o obj))
+    let remove (t, key) =
+        if HP.mem t.object_table key then (
+            let rect = HP.find_exn t.object_table key in
+            HP.remove t.object_table key;
+            Rtree.delete (t.rtree, rect, t.cmp key)
         )
 end
 
 module Drawable = struct
-    type prim = {
+    type notifiable = <
+        changed : Rect.t -> unit
+    >
+
+    type id = < >
+
+    type common = {
+        mutable parent : parent_object option;
         mutable bounds : Rect.t;
+        id : id;
+    }
+
+    and prim_rec = {
         mutable color : Color.t;
         mutable fill_type : draw_type;
+        p_common : common;
     }
 
-    type text_rec = {
+    and text_rec = {
         mutable text : string;
         mutable font : Font.t;
-        prim : prim;
+        mutable t_color : Color.t;
+        mutable t_fill_type : draw_type;
+        t_common : common;
     }
 
-    type view_rec = {
-        mutable outer_bounds : Rect.t;
+    and view_rec = {
         mutable inner_bounds : Rect.t;
-        index : any_object SpatialIndex.t;
+        index : (id, any_object) SpatialIndex.t;
+        search_results : (id * any_object) DynArray.t;
         view_children : any_object DynArray.t;
+        v_common : common;
     }
 
     and group_rec = {
+        g_common : common;
         group_children : any_object DynArray.t;
     }
 
     and any_object = Ex : 'a t -> any_object
 
+    and parent_object = P : (unit * 'a) t -> parent_object
+
+    and group = group_rec
+    and view = view_rec
+    and text = text_rec
+    and prim = prim_rec
+
     and _ t =
-        | Text : text_rec -> text_rec t
+        | Text : text -> text t
         | Rect : prim -> prim t
-        | Group : group_rec -> (unit * group_rec) t
-        | Viewport : view_rec -> (unit * view_rec) t
+        | Group : group -> (unit * group) t
+        | Viewport : view -> (unit * view) t
 
-    let update : type a. a t -> unit = function
-        | Text _ -> ()
-        | Rect _ -> ()
-        | Group _ -> ()
-        | Viewport _ -> ()
+    let get_rect : type a. a t -> Rect.t = function
+        | Text t -> t.t_common.bounds
+        | Rect r -> r.p_common.bounds
+        | Group g -> Rect.empty
+        | Viewport v -> v.v_common.bounds
 
-    let with_child : type a. (unit * a) t -> unit =  function
-        | Group _ -> ()
-        | Viewport _ -> ()
+    let get_common : type a. a t -> common = function
+        | Text t -> t.t_common
+        | Rect r -> r.p_common
+        | Group g -> g.g_common
+        | Viewport v -> v.v_common
 
-    module Prim = struct
-        let create ?(bounds=Rect.empty) ?(color=Color.black) ?(fill_type=Fill) () = {
-            bounds; color; fill_type
-        }
+    let get_id v = (get_common v).id
 
-        let set_pos (prim, pos : prim * Pos.t) =
-            prim.bounds <- {prim.bounds with x=pos.x; y=pos.y}
+    let delete_from_nearest_viewport : type a. a t -> unit = 
+        let rec loop : type a. a t * common -> unit = function
+            | _, {parent=None} -> ()
+            | Group g, parent ->
+                (* Need to delete all children as well *)
+                DynArray.iter (function
+                    | Ex (Text _ as text) -> loop (text, parent)
+                    | Ex (Rect _ as rect) -> loop (rect, parent)
+                    | Ex (Group _ as group) -> loop (group, parent)
+                    | Ex (Viewport _ as view) -> loop (view, parent)
+                ) g.group_children;
+            | c, {parent=Some (P (Viewport v))} -> SpatialIndex.remove (v.index, get_id c)
+            | c, {parent=Some (P (Group g))} -> loop (c, g.g_common)
+        in
+        function
+        | child -> loop (child, get_common child)
+    ;;
+
+    let add_to_nearest_viewport : type a. a t -> unit = 
+        let rec loop : type a. a t * common -> unit = function
+            | Group g, parent ->
+                (* Need to add each child individually *)
+                DynArray.iter (function
+                    | Ex (Text _ as text) -> loop (text, parent)
+                    | Ex (Rect _ as rect) -> loop (rect, parent)
+                    | Ex (Group _ as group) -> loop (group, parent)
+                    | Ex (Viewport _ as view) -> loop (view, parent)
+                ) g.group_children;
+            | child, {parent=Some (P (Viewport v))} ->
+                let rect = get_rect child in
+                SpatialIndex.add (v.index, (get_id child, Ex child), rect);
+            | child, {parent=Some (P (Group g))} ->
+                loop (child, g.g_common)
+            | _, {parent=None} -> ()
+        in
+        function
+        | child -> loop (child, get_common child)
+    ;;
+
+    let update : type a. a t -> unit = 
+        let rec loop : type a. a t * common -> unit = function
+            | _, {parent=None} -> ()
+            | child, {parent=Some (P (Viewport v))} ->
+                let rect = get_rect child in
+                let id = get_id child in
+                SpatialIndex.remove (v.index, id);
+                SpatialIndex.add (v.index, (id, Ex child), rect);
+            | child, {parent=Some (P (Group g))} ->
+                loop (child, g.g_common)
+        in
+        function
+        | child -> loop (child, get_common child) 
+    ;;
+
+    let get_children : type a. (unit * a) t -> any_object DynArray.t = function
+        | Group g -> g.group_children
+        | Viewport v -> v.view_children
+    ;;
+
+    let remove_child : type a b. (unit * a) t * b t -> unit = 
+        let filter c = 
+            let common = get_common c in
+            DynArray.filter (fun (Ex v) -> 
+            if phys_equal (get_id v) common.id then (
+                common.parent <- None;
+                false
+            ) else true
+        ) in
+        function
+        | Group g, c ->
+                (* Search up until the viewport is found *)
+                delete_from_nearest_viewport c;
+                filter c g.group_children
+        | Viewport v, c ->
+                SpatialIndex.remove (v.index, get_id c);
+                filter c v.view_children
+
+    let set_parent : type a b. a t * (unit * b) t -> unit = 
+        let add_child (common, child, p) =
+            common.parent <- Some (P p);
+            DynArray.add (get_children p) (Ex child);
+        in
+        function
+        | c, p -> 
+            let common = get_common c in
+            begin match common.parent, p with
+            | Some (P ex_p), p when phys_equal (get_id ex_p) (get_id p) -> ()
+            | Some (P ex_p), p -> 
+                    remove_child (ex_p, c);
+                    add_child (common, c, p);
+                    add_to_nearest_viewport c;
+            | None, p -> add_child (common, c, p)
+            end;
+    ;;
+
+    let unparent : type a. a t -> unit = function
+        | child ->
+            let common = get_common child in
+            match common.parent with
+            | Some (P p) -> remove_child (p, child)
+            | None -> ()
+    ;;
+
+    let common () = {
+        parent=None;
+        id=object end;
+        bounds=Rect.empty;
+    }
+
+    module Rectangle = Rect
+
+    let draw_text : Graphics.context * text -> unit = function
+        | cr, text ->
+            Graphics.set_color cr text.t_color;
+            Graphics.draw_text cr text.font text.t_common.bounds text.text
+
+    let draw_rect : Graphics.context * prim -> unit = function
+        | cr, rect ->
+            Graphics.set_color cr rect.color;
+            Graphics.rectangle cr rect.p_common.bounds;
+            Graphics.fill cr
+
+    let rec draw : type a. Graphics.context * Rectangle.t * a t -> unit = 
+        function
+        | cr, _, Text t -> draw_text (cr, t)
+        | cr, _, Rect r -> draw_rect (cr, r)
+        | cr, rect, Group g ->
+            DynArray.iter (fun (Ex v) -> draw (cr, rect, v)) g.group_children
+        | cr, rect, Viewport v -> 
+            (* TODO - need to transform by the offsets *)
+            SpatialIndex.search (v.index, rect, v.search_results);
+            DynArray.iter (fun (_, Ex v) -> draw (cr, rect, v)) v.search_results;
+
+    module Common = struct
+        let set_pos (c, p : common * Pos.t) =
+            c.bounds <- {c.bounds with x=p.x; y=p.y}
     end
 
     module Viewport = struct
         let create ?(outer_bounds=Rect.empty) ?(inner_bounds=Rect.empty) () = Viewport {
-            outer_bounds;    
             inner_bounds;
-            index = SpatialIndex.create();
+            index = SpatialIndex.create (fun key (id, _) -> phys_equal key id);
+            search_results = DynArray.create();
             view_children = DynArray.create();
+            v_common = common();
         }
 
-        let set_inner_bounds : (unit * view_rec) t * Rect.t -> unit = function
+        let set_inner_bounds : (unit * view) t * Rect.t -> unit = function
             | Viewport v, rect -> v.inner_bounds <- rect
 
-        let set_outer_bounds : (unit * view_rec) t * Rect.t -> unit = function
+        let set_outer_bounds : (unit * view) t * Rect.t -> unit = function
             | Viewport v, rect -> v.inner_bounds <- rect
 
-        let add_child : (unit * view_rec) t * 'a t -> unit = function
-            | Viewport v, child -> DynArray.add v.view_children (Ex child)
-
-        let iter : ((unit * view_rec) t * (any_object -> unit)) -> unit = function
+        let iter : ((unit * view) t * (any_object -> unit)) -> unit = function
             | Viewport v, f -> DynArray.iter f v.view_children 
     end
 
     module Group = struct
         let create ?(children=[]) () = Group {
-            group_children=DynArray.of_list children
+            group_children=DynArray.of_list children; g_common=common();
         }
 
-        let add_child : (unit * group_rec) t * 'a t -> unit = function
-            | Group g, child -> DynArray.add g.group_children (Ex child)
-
-        let iter : (unit * group_rec) t * (any_object -> unit) -> unit = function
+        let iter : (unit * group) t * (any_object -> unit) -> unit = function
             | Group g, f -> DynArray.iter f g.group_children
     end
 
@@ -263,50 +416,67 @@ module Drawable = struct
         let create ?(text="") ?(font=Font.default_font) () = Text {
             text;
             font;
-            prim=Prim.create();
+            t_color=Color.black;
+            t_fill_type=Fill;
+            t_common=common();
         }
 
-        let set_text : text_rec t * string -> unit = function
-            | Text t, str -> t.text <- str
+        let update_text : text t -> unit = function
+            | Text t as text ->
+                let size = measure_text (t.font, t.text) in
+                t.t_common.bounds <- Rect.{
+                    t.t_common.bounds with
+                    w=size.w; h=size.h;
+                };
+                update text
+        ;;
 
-        let set_font : text_rec t * Font.t -> unit = function
-            | Text t, font -> t.font <- font
+        let set_text : text t * string -> unit = function
+            | Text t as text, str -> 
+                t.text <- str;
+                update_text text;
+        ;;
 
-        let set_pos : text_rec t * Pos.t -> unit = function
-            | Text t, pos -> Prim.set_pos (t.prim, pos)
+        let set_font : text t * Font.t -> unit = function
+            | Text t as text, font -> 
+                t.font <- font;
+                update_text text;
+        ;;
+
+        let set_pos : text t * Pos.t -> unit = function
+            | Text t as text, pos -> 
+                Common.set_pos (t.t_common, pos);
+                update_text text;
+        ;;
     end
 
     module Rect = struct
         let create ?(bounds=Rect.empty) ?(color=Color.red) ?(fill_type=Fill) () =
-            Rect (Prim.create ~bounds ~color ~fill_type ())
+            Rect {
+                color=Color.red;
+                fill_type=Fill;
+                p_common=common();
+            }
 
         let set_rect : prim t * Rect.t -> unit = function
-            | Rect r, rect -> r.bounds <- rect
+            | Rect r as r_tag, rect -> 
+                r.p_common.bounds <- rect;
+                update r_tag;
+        ;;
+
+        let set_color : prim t * Color.t -> unit = function
+            | Rect r as r_tag, color ->
+                r.color <- color;
+                update r_tag;
+        ;;
 
         let set_pos : prim t * Pos.t -> unit = function
-            | Rect r, pos -> Prim.set_pos (r, pos)
+            | Rect r as r_tag, pos -> 
+                Common.set_pos (r.p_common, pos);
+                update r_tag;
+        ;;
     end
-
-    let test () =
-        let v = Viewport.create() in
-        let t = Text.create() in
-        let r = Rect.create() in
-        let g = Group.create() in
-        Viewport.add_child (v, r);
-        Viewport.add_child (v, t);
-        Viewport.add_child (v, v);
-        Viewport.add_child (v, g);
-        Viewport.iter (v, function
-            | Ex (Text _) -> Stdio.printf "TEXT\n"
-            | Ex (Rect _) -> Stdio.printf "RECT\n"
-            | Ex (Viewport _) -> Stdio.printf "VIEWPORT\n"
-            | Ex (Group _) -> Stdio.printf "GROUP\n"
-        );
-        with_child g;
-        with_child v;
 end
-
-let _ = Drawable.test()
 
 module Layer = struct
 
@@ -506,8 +676,8 @@ class renderer = object(self)
     val mutable requestDraw : unit -> unit = fun _ -> ()
     val mutable updates : update_type DynArray.t = DynArray.create ~capacity:10 ()
 
-    val index : nodeObject SpatialIndex.t = SpatialIndex.create()
-    val searchResults : nodeObject DynArray.t = DynArray.create ~capacity:100 ()
+    val index : (nodeObject, unit) SpatialIndex.t = SpatialIndex.create (fun o1 (o2, _) -> phys_equal o1 o2)
+    val searchResults : (nodeObject * unit) DynArray.t = DynArray.create ~capacity:100 ()
 
     method root = root
     method setRoot r = 
@@ -528,7 +698,7 @@ class renderer = object(self)
         let rect = obj#rect in
         if not (Rect.is_empty rect) && Option.is_some obj#parent then (
             let rect = Layer.calc_rect (obj, obj#rect) in
-            SpatialIndex.add (index, obj, rect);
+            SpatialIndex.add (index, (obj, ()), rect);
         )
 
     method removeObject (obj : nodeObject) : unit =
@@ -600,12 +770,12 @@ class renderer = object(self)
         Graphics.clip_rect cr rect;
         let _, s1 = Util.time (fun _ ->
             SpatialIndex.search (index , rect, searchResults);
-            Util.dynarray_sort (searchResults, fun (obj1, obj2) ->
+            Util.dynarray_sort (searchResults, fun ((obj1, _), (obj2, _)) ->
                 obj1#fullZIndex - obj2#fullZIndex
             );
         ) in
         (*Stdio.printf "SEARCH FOUND %d\n%!" (DynArray.length searchResults);*)
-        DynArray.iter (fun obj ->
+        DynArray.iter (fun (obj, _) ->
             (*Stdio.printf "DRAWING %s\n%!" obj#toString;*)
             obj#draw cr
         ) searchResults;
