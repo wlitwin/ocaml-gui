@@ -661,6 +661,9 @@ class rectObject render = object
 
     method setId i = id <- i
     method setRect (r : Rect.t) : unit =
+        (* TODO - when stroke draw type, create 8 updates 
+         * that are just the outlines
+         * *)
         let before = Drawable.Rect.get_rect rect in
         if not (Rect.equal(before, r)) then (
             Drawable.Rect.set_rect (rect, r);

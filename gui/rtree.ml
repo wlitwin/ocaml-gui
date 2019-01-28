@@ -1,3 +1,38 @@
+(*type z = Z : z
+type 'n s = S : 'n -> 'n s
+
+type ('a, _) gtree =
+    | EmptyG : ('a, z) gtree
+    | TreeG : ('a, 'n) gtree * 'a * ('a, 'n) gtree -> ('a, 'n s) gtree
+
+type 'a leaf_rec = {
+    mutable l_parent : 'a any_node option;
+    mutable l_bounds : Rect.t;
+    mutable data : (Rect.t * 'a) DynArray.t;
+}
+
+and _ any_node = N : ('a, 'n s) rtree -> 'a any_node
+
+and ('a, 'n) node_rec = {
+    mutable n_parent : ('a, 'n s) rtree option;
+    mutable n_bounds : Rect.t;
+    mutable children : ('a, 'n) rtree DynArray.t
+}
+
+and ('a, _) rtree =
+    | R__Leaf : 'a leaf_rec -> ('a, z) rtree
+    | R__Node : ('a, 'n) node_rec -> ('a, 'n s) rtree
+
+type _ any_tree =
+    | Ex : ('a, 'b) rtree -> 'a any_tree
+
+type 'a tt = {
+    mutable root : 'a any_tree;
+}
+*)
+
+module R2 = Rtree2
+
 type 'a tree =
           | Node of { 
               mutable parent : 'a tree option;
@@ -21,14 +56,14 @@ let create () = {
 let min_child_size = 2
 let max_child_size = 10
 
-let bounds = function
-    | Leaf l -> l.bounds
-    | Node n -> n.bounds
-;;
-
 let set_parent p = function
     | Leaf l -> l.parent <- Some p
     | Node n -> n.parent <- Some p
+;;
+
+let bounds = function
+    | Leaf l -> l.bounds
+    | Node n -> n.bounds
 ;;
 
 let bounding_box_of_array (nodes, bounds) =
