@@ -118,6 +118,7 @@ module DependencyGraph = struct
     type field_tuple = item * Constraint.t * dep_field
     type visited_set = (item_dep, unit) PolyHash.t
 
+    exception Not_a_DAG of dep_field
     (* Topological sort, based on depth-first search *)
     let depth_sort (tbl : (item_dep, item_dep array) PolyHash.t) (all : field_tuple list) : item_dep array =
         let sorted = ref [] in
@@ -129,7 +130,7 @@ module DependencyGraph = struct
         let mark_perm i = PolyHash.set perm i () in
         let rec visit (item, dep as key : item_dep) =
             if has_perm key then ()
-            else if has_temp key then (failwith "Not a DAG")
+            else if has_temp key then raise (Not_a_DAG dep)
             else begin
                 mark_temp key;
                 let lst = PolyHash.find_exn tbl key in

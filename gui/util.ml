@@ -40,7 +40,7 @@ let array_concat arr =
     else begin
         let init =
             let rec loop i =
-                if i >= sum then failwith "Impossible"
+                if i >= (*sum then failwith "Impossible"*) Array.length arr then failwith "Impossible"
                 else begin
                     if Array.length(arr.(i)) > 0 then
                         arr.(i).(0)

@@ -82,6 +82,8 @@ type text_list = {
 
 type obj = < >
 
+module Rtree = Rtree2
+
 module SpatialIndex = struct
     module HP = Hashtbl.Poly
 
@@ -352,6 +354,23 @@ module Drawable = struct
         absolute_z_index=0;
     }
 
+    let print_tree : type a. (unit * view) t -> unit = function
+        | Viewport tree ->
+            Stdio.printf "%s\n%!" (Test_rtree.str_tree tree.index.rtree
+                (fun (id, Ex obj) -> 
+                    Printf.sprintf "%s %d" 
+                    (match obj with
+                    | Rect _ -> "rect"
+                    | Text _ -> "text"
+                    | Group _ -> "group"
+                    | Viewport _ -> "view"
+                    )
+                    (get_common obj).absolute_z_index
+                )
+                (fun (id, Ex obj) -> (get_common obj).bounds)
+            )
+    ;;
+
     module Rectangle = Rect
 
     let draw_text : Graphics.context * text -> unit = function
@@ -376,16 +395,17 @@ module Drawable = struct
         | cr, rect, Viewport v -> 
             Graphics.save cr;
             Graphics.clip_rect cr v.v_common.bounds;
-            let outer = v.v_common.bounds in
-            let inner = v.inner_bounds in
+            (*let outer = v.v_common.bounds in
+            let inner = v.inner_bounds in*)
             let translate_x = Float.round (v.v_common.bounds.x -. v.inner_bounds.x) in
             let translate_y = Float.round (v.v_common.bounds.y -. v.inner_bounds.y) in
             (*Stdio.printf "OFFSET %f %f\n" translate_x translate_y;
             Stdio.printf "OUTER %f %f %f %f\n" outer.x outer.y outer.w outer.h;
             Stdio.printf "INNER %f %f %f %f\n%!" inner.x inner.y inner.w inner.h;*)
             Graphics.translate cr translate_x translate_y;
-            let search_rect = Rectangle.{rect with x=rect.x -. translate_x; y=rect.y-.translate_y} in
-            SpatialIndex.search (v.index, search_rect, v.search_results);
+            let search_rect = Rectangle.{rect with x=rect.x +. translate_x; y=rect.y+.translate_y} in
+            print_tree (Viewport v);
+            SpatialIndex.search (v.index, rect, v.search_results);
             Util.dynarray_sort (v.search_results, (fun ((_, Ex item1), (_, Ex item2)) ->
                 (get_common item1).absolute_z_index - (get_common item2).absolute_z_index
             ));
@@ -822,22 +842,7 @@ class renderer = object(self)
             Graphics.fill cr;
         in*)
         if drawEnabled && DynArray.length updates > 0 then begin
-            (*let print_tree () = 
-                Stdio.printf "%s\n%!" (Test_rtree.str_tree (Drawable.Viewport.get_index root).rtree
-                    (fun (id, Ex obj) -> 
-                        Printf.sprintf "%s %d" 
-                        (match obj with
-                        | Rect _ -> "rect"
-                        | Text _ -> "text"
-                        | Group _ -> "group"
-                        | Viewport _ -> "view"
-                        )
-                        Drawable.(get_common obj).absolute_z_index
-                    )
-                    (fun (id, Ex obj) -> (Drawable.get_common obj).bounds)
-                )
-            in
-            print_tree();
+            (*Drawable.print_tree root;
             Caml.print_endline (Drawable.str_tree root);*)
             let searchTime, drawTime = Util.time (fun _ ->
                 (* Check if there is a FullRefresh, if so, ignore everything else *)

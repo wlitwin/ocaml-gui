@@ -4,6 +4,7 @@ let coerce (v : ('a, 'b) #Widget.basicWidget) =
     (v :> ('a, 'b) Widget.basicWidget)
 ;;
 
+(*
 let _ =
     Platform.Windowing.run (fun context ->
         let app = new Application.application context Rect.{w=400.; h=400.} in
@@ -17,3 +18,4 @@ let _ =
         );
         app#main
     )
+    *)

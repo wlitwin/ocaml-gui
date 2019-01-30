@@ -61,11 +61,15 @@ object(self)
         let lPath = cl lblPath in
         let tPath = cl txtPath in
         let lScroll = cl scroll in
+        let from_bot = ConstraintLayout.(Constraint.(Add [|
+            wBottom ~-.50.;
+            (*Mul [| Const ~-.1.; preferredH txtPath |]*)
+        |])) in
         let rules = ConstraintLayout.(Constraint.([
+            {input_item=tPath; input_loc={top=from_bot; left=rightOf lPath 10.; right=wRight ~-.10.; bottom=preferredH txtPath}};
             {input_item=lPath; 
              input_loc={top=centerTop lPath tPath; left=wLeft 10.; bottom=preferredH lblPath; right=preferredW lblPath}};
-            {input_item=tPath; input_loc={top=wTop 10.; left=rightOf lPath 10.; right=wRight ~-.10.; bottom=preferredH tPath}};
-            {input_item=lScroll; input_loc={top=bottomOf tPath 10.; left=wLeft 10.; right=wRight ~-.10.; bottom=wBottom ~-.10.}};
+            {input_item=lScroll; input_loc={top=wTop 0.; left=wLeft 0.; right=wRight 0.; bottom=topOf tPath ~-.10.}};
         ])) in
         let layout = new ConstraintLayout.constraintLayout rules app#renderer in
         self#setLayout (layout :> ('a, 'b) Layout.layout);

@@ -16,5 +16,6 @@ object(self)
     initializer
         textObject#setZIndex 1;
         textObject#setText start_text;
+        renderObject#removeChild bgRect#obj;
         renderObject#addChild textObject#obj;
 end

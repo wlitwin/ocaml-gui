@@ -23,6 +23,13 @@ type 'a t = {
     mutable root : 'a any_tree;
 }
 
+let create () : 'a t = {
+    root = Ex (RLeaf {
+        bounds = Rect.empty;
+        data = DynArray.create ~capacity:10 ();
+    })
+}
+
 let bounds : type a. a rtree -> Rect.t  = function
     | RLeaf {bounds} -> bounds
     | RNode {bounds} -> bounds
@@ -36,7 +43,7 @@ let enlargement_amount (rect1, rect2) =
 type 'a index_list = (int * 'a any_node) list
 
 let min_child_size = 2
-let max_child_size = 10
+let max_child_size = 4
 
 let choose_leaf : type a b c. (a * b) rtree * Rect.t -> (a index_list * (a * z) rtree) = function
     | tree, rect ->
@@ -51,7 +58,7 @@ let choose_leaf : type a b c. (a * b) rtree * Rect.t -> (a index_list * (a * z) 
             let index = ref 0 in
             let best_enlargement = ref (enlargement_amount (bounds node_0, rect)) in
             let best_node = ref (Ex node_0) in
-            for i=1 to DynArray.length nodes do
+            for i=1 to DynArray.length nodes - 1 do
                 let Ex node = DynArray.get nodes i in
                 let enlarge = enlargement_amount (bounds node, rect) in
                 if cmp(enlarge, !best_enlargement) < 0 then (
@@ -221,14 +228,15 @@ let insert = function
 | tree, rect, obj ->
     assert (not (Rect.is_empty rect));
     match tree.root with
-    | Ex (RLeaf {data}) when DynArray.length data < max_child_size ->
-        DynArray.add data (rect, obj);
-    | Ex (RLeaf _ as leaf) ->
-         let RLeaf left, RLeaf right = split_node leaf in
-         tree.root <- Ex (RNode {
-             bounds = Rect.union left.bounds right.bounds;
+    | Ex (RLeaf l as leaf) ->
+        DynArray.add l.data (rect, obj);
+        l.bounds <- Rect.union l.bounds rect;
+        if too_many_children l.data then (
+            let RLeaf left, RLeaf right = split_node leaf in
+            tree.root <- Ex (RNode {
+                bounds = Rect.union left.bounds right.bounds;
              children = DynArray.of_list [Ex (RLeaf left); Ex (RLeaf right)]
-         })
+        }))
     | Ex node ->
         match choose_leaf (node, rect) with
         | path, (RLeaf data as node) ->
@@ -288,12 +296,6 @@ let bounding_box_of_array (nodes, bounds) =
     )
 ;;
 
-
-let shrink_bounds : type a. a rtree -> unit = function
-    | RLeaf l -> l.bounds <- bounding_box_of_array(l.data, fst)
-    | RNode n -> n.bounds <- bounding_box_of_array(n.children, fun (Ex n) -> bounds n)
-;;
-
 let search : 'a t * Rect.t * 'a DynArray.t -> unit = function
 | tree, rect, output ->
     DynArray.clear output;
@@ -310,66 +312,53 @@ let search : 'a t * Rect.t * 'a DynArray.t -> unit = function
     loop tree.root
 ;;
 
-(*
-let shrink_tree tree = function
-    | [] -> ()
-    | Ex (RNode node) :: tl -> ()
-    | Ex (RLeaf node) :: tl -> ()
-    (* Check if root only has one child *)
+let squash_root tree =
     match tree.root with
-    | Some (Leaf {data}) when DynArray.empty data ->
-        tree.root <- None
-    | Some (Node {children}) when DynArray.length children = 1 ->
-        let child = DynArray.get children 0 in
-        begin match child with
-        | Leaf l -> l.parent <- None
-        | Node n -> n.parent <- None
-        end;
-        tree.root <- Some child
+    | Ex (RLeaf _) -> ()
+    | Ex (RNode n) when DynArray.length n.children = 1 ->
+        tree.root <- DynArray.get n.children 0
     | _ -> ()
 ;;
-*)
+
+let update_leaf_bounds : type a b. (a * z) rtree -> unit = function
+    | RLeaf l -> l.bounds <- bounding_box_of_array (l.data, fst)
+;;
+
+let update_node_bounds : type a b. (a * b s) rtree -> unit = function
+    | RNode n -> n.bounds <- bounding_box_of_array (n.children, fun (Ex n) -> bounds n);
+;;
+
 let condense_tree : type a. a t * a index_list * (a * z) rtree -> unit = function 
-| tree, [], (RLeaf l) -> l.bounds <- bounding_box_of_array (l.data, fst)
-| tree, path, (RLeaf l as leaf) ->
+| tree, [], (RLeaf _ as leaf) -> update_leaf_bounds leaf
+| tree, ((index, N (RNode p as node)) :: tl as path), (RLeaf l as leaf) ->
+    assert (min_child_size = 2);
     if too_few_children l.data then (
         (* Need to eliminate this leaf node and propagate upwards *)
-        ()
+        DynArray.delete p.children index;
+        update_node_bounds node;
+        let rec loop = function
+            | _, [] -> ()
+            | RNode child, (index, N (RNode p)) :: tl ->
+                if too_few_children child.children then (
+                    DynArray.delete p.children index;
+                    loop (RNode p, tl)
+                ) else (
+                    update_node_bounds (RNode p);
+                )
+        in
+        loop (node, tl);
+        DynArray.iter (fun (rect, obj) -> 
+            insert (tree, rect, obj);
+        ) l.data;
+        (* Check if we can squish the root *)
+        squash_root tree
     ) else (
         (* Just update the parent rects *)
-        l.bounds <- bounding_box_of_array (l.data, fst);
-        List.iter path (fun (_, N (RNode n)) ->
-            n.bounds <- bounding_box_of_array (n.children, fun (Ex n) -> bounds n);
+        update_leaf_bounds leaf;
+        List.iter path (fun (_, N node) ->
+            update_node_bounds node;
         )
     )
-
-    let eliminations = DynArray.create ~capacity:5 () in
-    let rec loop leaf =
-        let eliminate (parent, children) =
-            DynArray.add eliminations leaf;
-            shrink_bounds parent;
-            let before = DynArray.length children in
-            DynArray.filter (fun item -> not (phys_equal item leaf)) children;
-            let after = DynArray.length children in
-            assert (after = before - 1 || after = before);
-            loop parent;
-        in
-        match leaf with
-        | RLeaf {parent=None}
-        | RNode {parent=None} -> ()
-        | RNode ({parent=Some (Node p as parent)} as n) when too_few_children n.children ->
-            n.parent <- None;
-            eliminate (parent, p.children);
-        | RLeaf ({parent=Some (Node p as parent); data} as l) when too_few_children data ->
-            l.parent <- None;
-            eliminate (parent, p.children);
-        | RNode {parent=Some (Node _)}
-        | RLeaf {parent=Some (Node _)} ->
-            condense_parent_rects (Some leaf)
-        | _ -> failwith "impossible condense_tree"
-    in
-    loop leaf;
-    insert_eliminations (tree, eliminations);
 ;;
 
 let delete : 'a t * Rect.t * ('a -> bool) -> unit = function
@@ -379,6 +368,5 @@ let delete : 'a t * Rect.t * ('a -> bool) -> unit = function
     | None -> ()
     | Some (idx, path, (RLeaf l as leaf)) ->
         DynArray.delete l.data idx;
-        shrink_bounds leaf;
         condense_tree (tree, path, leaf);
 ;;

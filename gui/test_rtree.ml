@@ -12,32 +12,31 @@ let str_parent = function
     | Some p -> str_of_obj p
 
 let str_node node print calc_bounds =
-    let open Rtree in
-    let rec loop idnt = 
+    let open Rtree2 in
+    let rec loop : type a b. int -> ((a -> string) * (a -> Rect.t) * (a * b) rtree) -> string = fun idnt ->
         let pad = String.make idnt ' ' in
         function
-        | Leaf {bounds; data; parent} as l ->
-            Printf.sprintf "%sLeaf [%s / %s] {%.2f %.2f %.2f %.2f}\n%s"
-            pad (str_parent parent) (str_of_obj l) bounds.x bounds.y bounds.w bounds.h 
-            (DynArray.fold_left (fun str (_, item) ->
+        | print, calc_bounds, RLeaf {bounds; data;} as l ->
+            Printf.sprintf "%sLeaf [%s] {%.2f %.2f %.2f %.2f}\n%s"
+            pad (str_of_obj l) bounds.x bounds.y bounds.w bounds.h 
+            (DynArray.fold_left (fun str (_, item : Rect.t * a) ->
                 let bounds : Rect.t = calc_bounds item in
                 str ^ Printf.sprintf "%s [%s] {%.2f %.2f %.2f %.2f}\n"
                 pad (print item) bounds.x bounds.y bounds.w bounds.h
             ) "" data)
-        | Node {bounds; children; parent} as n ->
-            Printf.sprintf "%sNode [%s / %s] {%.2f %.2f %.2f %.2f}\n%s"
-            pad (str_parent parent) (str_of_obj n) bounds.x bounds.y bounds.w bounds.h 
-            (DynArray.fold_left (fun str node -> 
-                str ^ loop (idnt+2) node
+        | print, calc_bounds, RNode {bounds; children} as n ->
+            Printf.sprintf "%sNode [%s] {%.2f %.2f %.2f %.2f}\n%s"
+            pad (str_of_obj n) bounds.x bounds.y bounds.w bounds.h 
+            (DynArray.fold_left (fun str (Ex node) -> 
+                str ^ loop (idnt+2) (print, calc_bounds, node)
             ) "" children)
     in
-    loop 0 node
+    loop 0 (print, calc_bounds, node)
 ;;
 
 let str_tree tree print bounds =
-        match tree.Rtree.root with
-        | None -> "Empty tree"
-        | Some root -> str_node root print bounds
+        match tree.Rtree2.root with
+        | Ex root -> str_node root print bounds
 ;;
 
 let print_tree tree =
@@ -51,16 +50,16 @@ let mk id bounds = {
 }
 
 let insert tree item =
-    Rtree.insert (tree, item.bounds, item)
+    Rtree2.insert (tree, item.bounds, item)
 ;;
 
 let delete tree item =
-    Rtree.delete (tree, item.bounds, fun i -> i.id = item.id)
+    Rtree2.delete (tree, item.bounds, fun i -> i.id = item.id)
 ;;
-(*
 
+(*
 let test1 = 
-    let tree = Rtree.create() in
+    let tree = Rtree2.create() in
     let item1 = mk 0 Rect.{x=0.; y=0.; w=10.; h=10.} in
     let item2 = mk 1 Rect.{x=10.; y=10.; w=10.; h=10.} in
     let item3 = mk 2 Rect.{x=20.; y=20.; w=10.; h=10.} in
@@ -97,9 +96,10 @@ let test1 =
     insert tree item14;
     print_tree tree;
 ;;
+*)
 
 let _ = 
-    let tree = Rtree.create() in
+    let tree = Rtree2.create() in
     let item1 = mk 0 Rect.{x=0.; y=0.; w=10.; h=10.} in
     let item2 = mk 1 Rect.{x=10.; y=10.; w=10.; h=10.} in
     let item3 = mk 2 Rect.{x=20.; y=20.; w=10.; h=10.} in
@@ -166,4 +166,3 @@ let _ =
     insert tree item1;
     insert tree item2;
     print_tree tree;
-*)
