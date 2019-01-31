@@ -10,6 +10,7 @@ object(self)
         List.iter lst v_layout#addLayoutable;
 
     initializer
+        renderObject#removeChild bgRect#obj;
         v_layout#setDistributeEvenly false;
         self#setContents items;
         self#setLayout (v_layout :> ('a, 'b) Layout.layout)

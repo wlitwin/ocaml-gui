@@ -15,7 +15,7 @@ and 'a rtree =
     | RLeaf : { mutable bounds:Rect.t; mutable data:(Rect.t * 'a) DynArray.t } -> ('a * z) rtree
     | RNode : { mutable bounds:Rect.t; mutable children: 'a any_tree DynArray.t } -> ('a * 'n s) rtree
 
-and 'a any_tree = Ex : ('a * 'b) rtree -> 'a any_tree
+and 'a any_tree = Ex : ('a * 'b) rtree -> 'a any_tree [@@ocaml.boxed]
 
 type 'a any_node = N : ('a * 'b s) rtree -> 'a any_node
 
@@ -43,7 +43,7 @@ let enlargement_amount (rect1, rect2) =
 type 'a index_list = (int * 'a any_node) list
 
 let min_child_size = 2
-let max_child_size = 4
+let max_child_size = 10
 
 let choose_leaf : type a b c. (a * b) rtree * Rect.t -> (a index_list * (a * z) rtree) = function
     | tree, rect ->
@@ -77,6 +77,61 @@ let choose_leaf : type a b c. (a * b) rtree * Rect.t -> (a index_list * (a * z) 
                 loop (path, best_node)
         in
         (loop ([], tree))
+;;
+
+let size : type a. a t -> int = function
+    | tree ->
+        let rec loop : type a b. (a * b) rtree -> int = function
+            | RLeaf l -> DynArray.length l.data
+            | RNode {children} ->
+                DynArray.fold_left (fun acc (Ex node) ->
+                    acc + loop node
+                ) 0 children
+        in
+        let Ex root = tree.root in
+        loop root
+;;
+
+let rec ptree : type a b. int * (a * b) rtree -> unit = 
+    let pad i = String.make i ' ' in
+    function
+    | idnt, RLeaf l -> Stdio.printf "%sLEAF %d\n" (pad idnt) (DynArray.length l.data)
+    | idnt, RNode n ->
+        Stdio.printf "%sNODE %d\n" (pad idnt) (DynArray.length n.children);
+        DynArray.iter (fun (Ex n) -> ptree (idnt+2, n)) n.children
+;;
+
+let depth : type a. a any_tree -> int = function
+    | node ->
+        let rec loop : int * a any_tree -> int = function
+            | acc, Ex (RLeaf _) -> acc
+            | acc, Ex (RNode {children}) -> 
+                let child0 = DynArray.get children 0 in
+                loop (acc+1, child0)
+        in
+        loop (0, node)
+;;
+
+let assert_msg (str, tree, exp) =
+    if not exp then (
+        ptree (0, tree);
+        Stdio.printf "%s\n%!"  str;
+        assert exp
+    )
+;;
+
+let check_depths : type a. string * a t -> unit = function
+    | str, {root=Ex root as tree} ->
+        let depth = depth tree in
+        (* All nodes should be < depth
+         * all leaves should be = depth *)
+        let rec walk : type b. int * (a * b) rtree -> unit = function
+            | d, RLeaf _ -> assert_msg (str, root, d = depth);
+            | d, RNode {children} ->
+                assert_msg (str, root, d < depth);
+                DynArray.iter (fun (Ex n) -> walk (d+1, n)) children
+        in
+        walk (0, root)
 ;;
 
 (* Calculate pair with largest union'd area *)
@@ -211,7 +266,7 @@ let rec adjust_tree : type a b c d. (int * a any_node) list * (a * b) rtree * (a
     in
     function
     | [], l, ll -> create_new_root (l, ll, bounds l, bounds ll)
-    | (index, N (RNode n_rec as node)) :: tl, l, ll ->
+    | ((index, N (RNode n_rec as node)) :: tl as path), l, ll ->
         (* Need to remove l and ll from the parent? *)
         DynArray.delete n_rec.children index;
         DynArray.add n_rec.children (Ex l);
@@ -220,6 +275,8 @@ let rec adjust_tree : type a b c d. (int * a any_node) list * (a * b) rtree * (a
             let left, right = split_node node in
             adjust_tree (tl, left, right)
         ) else (
+            (* TODO make more efficient *)
+            let _, N (RNode _ as node) = List.last_exn path in
             node
         )
 ;;
@@ -236,19 +293,24 @@ let insert = function
             tree.root <- Ex (RNode {
                 bounds = Rect.union left.bounds right.bounds;
              children = DynArray.of_list [Ex (RLeaf left); Ex (RLeaf right)]
-        }))
+        }));
+        check_depths ("insert_leaf", tree);
     | Ex node ->
-        match choose_leaf (node, rect) with
+        begin match choose_leaf (node, rect) with
         | path, (RLeaf data as node) ->
             DynArray.add data.data (rect, obj);
             data.bounds <- Rect.union data.bounds rect;
             if too_many_children data.data then (
+                check_depths ("insert_node_before", tree);
                 let left, right = split_node node in
                 let new_root = adjust_tree (path, left, right) in
                 tree.root <- Ex new_root;
+                check_depths ("insert_node_split", tree);
             ) else (
-                propagate_bounds_upward (path, data.bounds)
+                propagate_bounds_upward (path, data.bounds);
+                check_depths ("insert_node_prop", tree);
             )
+        end;
 ;;
 
 let rec find_leaf : type a b c. (a * b) rtree * Rect.t * (a -> bool) -> (int * a index_list * (a * z) rtree) option = function
@@ -328,28 +390,78 @@ let update_node_bounds : type a b. (a * b s) rtree -> unit = function
     | RNode n -> n.bounds <- bounding_box_of_array (n.children, fun (Ex n) -> bounds n);
 ;;
 
+let best_parent (insert_bounds, children) =
+    let len = DynArray.length children in
+    let calc_increase idx =
+        let Ex node = DynArray.get children 0 in
+        let node_bounds = bounds node in
+        let union = Rect.union insert_bounds node_bounds in
+        {idx; diff=Rect.area union -. Rect.area node_bounds}
+    in
+    let best = ref (calc_increase 0) in
+    for idx=1 to len-1 do
+        let diff = calc_increase idx in
+        if Float.(diff.diff < !best.diff) then
+            best := diff
+    done;
+    DynArray.get children !best.idx
+;;
+
+exception Impossible_Insert_Elim
+let insert_elim : type a. a t * (int * a any_tree) list -> unit = function
+    | tree, elim ->
+        let depth = depth tree.root in
+        let rec add = function
+            | _, Ex (RLeaf {data}) -> DynArray.iter (fun (rect, obj) -> insert (tree, rect, obj)) data
+            | d, Ex (RNode n) ->
+                let d = depth - d in
+                (* Search down until we hit the right depth *)
+                let rec loop = function
+                    | _, Ex (RLeaf _) -> raise Impossible_Insert_Elim
+                    | cur_depth, Ex (RNode p) ->
+                        (*Stdio.printf "CD %d\n" cur_depth;*)
+                        if cur_depth = d then (
+                            update_node_bounds (RNode n); 
+                            DynArray.add p.children (Ex (RNode n));
+                            p.bounds <- Rect.union p.bounds n.bounds;
+                        ) else (
+                            (* Determine which node to add to *)
+                            let best = best_parent (n.bounds, p.children) in
+                            loop (cur_depth+1, best)
+                        )
+                in
+                loop (1, tree.root)
+        in
+ (*       Stdio.printf "T DEPTH %d\n" depth;
+        List.iteri elim (fun idx (d, Ex elim) ->
+            Stdio.printf "ELIM %d [%d]\n" idx d;
+            ptree (1, elim);
+        );*)
+        List.iter elim add
+;;
+
 let condense_tree : type a. a t * a index_list * (a * z) rtree -> unit = function 
 | tree, [], (RLeaf _ as leaf) -> update_leaf_bounds leaf
 | tree, ((index, N (RNode p as node)) :: tl as path), (RLeaf l as leaf) ->
-    assert (min_child_size = 2);
     if too_few_children l.data then (
         (* Need to eliminate this leaf node and propagate upwards *)
         DynArray.delete p.children index;
-        update_node_bounds node;
         let rec loop = function
-            | _, [] -> ()
-            | RNode child, (index, N (RNode p)) :: tl ->
+            | _, elim, RNode child, [] -> update_node_bounds (RNode child); elim
+            | depth, elim, RNode child, (index, N (RNode p)) :: tl ->
                 if too_few_children child.children then (
                     DynArray.delete p.children index;
-                    loop (RNode p, tl)
+                    let elim = DynArray.fold_left (fun acc child ->
+                        (depth, child) :: acc
+                    ) elim child.children in
+                    loop (depth+1, elim, RNode p, tl)
                 ) else (
                     update_node_bounds (RNode p);
+                    elim
                 )
         in
-        loop (node, tl);
-        DynArray.iter (fun (rect, obj) -> 
-            insert (tree, rect, obj);
-        ) l.data;
+        let elim = loop (0, [0, Ex leaf], node, tl) in
+        insert_elim (tree, elim);
         (* Check if we can squish the root *)
         squash_root tree
     ) else (
@@ -364,9 +476,20 @@ let condense_tree : type a. a t * a index_list * (a * z) rtree -> unit = functio
 let delete : 'a t * Rect.t * ('a -> bool) -> unit = function
 | tree, rect, pred ->
     let Ex root = tree.root in
+    (*let size_before = size tree in*)
+    (*Stdio.printf "==================\n%!";
+    ptree (0, root);*)
     match find_leaf (root, rect, pred) with
     | None -> ()
     | Some (idx, path, (RLeaf l as leaf)) ->
         DynArray.delete l.data idx;
         condense_tree (tree, path, leaf);
+        (*let size_after = size tree in
+        (*Stdio.printf "BEFORE %d AFTER %d\n" size_before size_after;*)
+        let Ex root = tree.root in
+        (*Stdio.printf "==================\n%!";
+        ptree (0, root);*)
+        (*check_depths ("delete", tree);
+        assert (size_before - size_after <= 1);*)
+        *)
 ;;

@@ -58,7 +58,13 @@ object(self)
         | _ ->
             renderer#groupUpdates (fun _ ->
                 self#checkSuperKeys key true;
+                try 
                 HandlesKeyboard.(self#widget#events#handle HandlesEvent.(mkEvent `KeyDown (`KeyDownArg key)))
+                with ex -> (
+                     Stdio.print_endline (Exn.to_string ex);
+                     Backtrace.get() |> Backtrace.to_string |> Stdio.printf "%s\n%!";
+                     raise ex;
+                );
             )
 
     method private keyUp key =

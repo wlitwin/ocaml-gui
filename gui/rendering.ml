@@ -361,7 +361,7 @@ module Drawable = struct
                     Printf.sprintf "%s %d" 
                     (match obj with
                     | Rect _ -> "rect"
-                    | Text _ -> "text"
+                    | Text t -> "text[" ^ t.text ^ "]"
                     | Group _ -> "group"
                     | Viewport _ -> "view"
                     )
@@ -403,9 +403,9 @@ module Drawable = struct
             Stdio.printf "OUTER %f %f %f %f\n" outer.x outer.y outer.w outer.h;
             Stdio.printf "INNER %f %f %f %f\n%!" inner.x inner.y inner.w inner.h;*)
             Graphics.translate cr translate_x translate_y;
-            let search_rect = Rectangle.{rect with x=rect.x +. translate_x; y=rect.y+.translate_y} in
-            print_tree (Viewport v);
-            SpatialIndex.search (v.index, rect, v.search_results);
+            let search_rect = Rectangle.{rect with x=rect.x -. translate_x; y=rect.y-.translate_y} in
+            (*print_tree (Viewport v);*)
+            SpatialIndex.search (v.index, search_rect, v.search_results);
             Util.dynarray_sort (v.search_results, (fun ((_, Ex item1), (_, Ex item2)) ->
                 (get_common item1).absolute_z_index - (get_common item2).absolute_z_index
             ));
@@ -429,7 +429,7 @@ module Drawable = struct
             let pad idnt = String.make idnt ' ' in
             let rec loop : type a. a t * int -> string = function
                 | Rect r, idnt -> Printf.sprintf "%srect %d (%d) [%d]\n" (pad idnt) r.p_common.absolute_z_index r.p_common.relative_z_index (calc_z_index (Rect r))
-                | Text t, idnt -> Printf.sprintf "%stext %d (%d) [%d]\n" (pad idnt) t.t_common.absolute_z_index t.t_common.relative_z_index (calc_z_index (Text t))
+                | Text t, idnt -> Printf.sprintf "%stext %s %d (%d) [%d]\n" (pad idnt) t.text t.t_common.absolute_z_index t.t_common.relative_z_index (calc_z_index (Text t))
                 | Group g, idnt ->
                     Printf.sprintf "%sgroup %d (%d) [%d]\n%s" (pad idnt) g.g_common.absolute_z_index g.g_common.relative_z_index (calc_z_index (Group g))
                     (DynArray.fold_left (fun acc (Ex obj) ->
@@ -722,7 +722,7 @@ class textObject render = object
         let before = Drawable.Text.get_bounds text in
         Drawable.Text.set_text (text, str);
         let after = Drawable.Text.get_bounds text in
-        render#refreshChanged (before, after)
+        render#refreshSingle (Rect.union before after)
 
     method size : Size.t = 
         let r = Drawable.Text.get_bounds text in
@@ -842,8 +842,8 @@ class renderer = object(self)
             Graphics.fill cr;
         in*)
         if drawEnabled && DynArray.length updates > 0 then begin
-            (*Drawable.print_tree root;
-            Caml.print_endline (Drawable.str_tree root);*)
+            (*Drawable.print_tree root;*)
+            (*Caml.print_endline (Drawable.str_tree root);*)
             let searchTime, drawTime = Util.time (fun _ ->
                 (* Check if there is a FullRefresh, if so, ignore everything else *)
                 if  DynArray.length updates > 50

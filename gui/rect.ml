@@ -64,7 +64,7 @@ let to_string r : string =
 
 let equal (a, b) = 
     Float.(
-        a.x = b.y
+        a.x = b.x
         && a.y = b.y
         && a.w = b.w
         && a.h = b.h)

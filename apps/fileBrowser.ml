@@ -42,7 +42,9 @@ object(self)
         self#updatePath;
 
     method private updatePath =
-        let lbls = readDir app txtPath#text in
+        let lbls = 
+            Util.timeit "read-dir" (fun _ ->
+            readDir app txtPath#text) in
         fileList#setContents (List.map lbls (fun i -> 
             (i :> ('a, 'b) Layoutable.layoutable)));
         scroll#resize scroll#fullRect;
