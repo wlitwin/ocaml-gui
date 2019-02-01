@@ -92,6 +92,7 @@ let size : type a. a t -> int = function
         loop root
 ;;
 
+(*
 let rec ptree : type a b. int * (a * b) rtree -> unit = 
     let pad i = String.make i ' ' in
     function
@@ -100,6 +101,7 @@ let rec ptree : type a b. int * (a * b) rtree -> unit =
         Stdio.printf "%sNODE %d\n" (pad idnt) (DynArray.length n.children);
         DynArray.iter (fun (Ex n) -> ptree (idnt+2, n)) n.children
 ;;
+*)
 
 let depth : type a. a any_tree -> int = function
     | node ->
@@ -112,6 +114,7 @@ let depth : type a. a any_tree -> int = function
         loop (0, node)
 ;;
 
+(*
 let assert_msg (str, tree, exp) =
     if not exp then (
         ptree (0, tree);
@@ -133,6 +136,7 @@ let check_depths : type a. string * a t -> unit = function
         in
         walk (0, root)
 ;;
+*)
 
 (* Calculate pair with largest union'd area *)
 let pick_seeds (nodes, bounds) =
@@ -294,21 +298,21 @@ let insert = function
                 bounds = Rect.union left.bounds right.bounds;
              children = DynArray.of_list [Ex (RLeaf left); Ex (RLeaf right)]
         }));
-        check_depths ("insert_leaf", tree);
+        (*check_depths ("insert_leaf", tree);*)
     | Ex node ->
         begin match choose_leaf (node, rect) with
         | path, (RLeaf data as node) ->
             DynArray.add data.data (rect, obj);
             data.bounds <- Rect.union data.bounds rect;
             if too_many_children data.data then (
-                check_depths ("insert_node_before", tree);
+                (*check_depths ("insert_node_before", tree);*)
                 let left, right = split_node node in
                 let new_root = adjust_tree (path, left, right) in
                 tree.root <- Ex new_root;
-                check_depths ("insert_node_split", tree);
+                (*check_depths ("insert_node_split", tree);*)
             ) else (
                 propagate_bounds_upward (path, data.bounds);
-                check_depths ("insert_node_prop", tree);
+                (*check_depths ("insert_node_prop", tree);*)
             )
         end;
 ;;

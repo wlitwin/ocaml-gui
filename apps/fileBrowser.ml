@@ -15,14 +15,14 @@ let create_strings =
         if n <= 0 then acc
         else f (build_str() :: acc) (n - 1)
     in
-    "0000000000000000000000000000000001" :: f [] 50
+    "0000000000000000000000000000000001" :: f [] 1000
 ;;
 
 let readDir app path =
     try
-        let dir = "." :: ".." :: Core.Sys.ls_dir path in
-        dir
-        (*create_strings*)
+        (*let dir = "." :: ".." :: Core.Sys.ls_dir path in
+        dir*)
+        create_strings
         |> List.sort ~compare:String.compare
         |> List.map ~f:(fun s -> new Label.label app ~text:s)
     with _ -> 
@@ -55,7 +55,6 @@ object(self)
         txtPath#events#addFn `KeyDown (object
             method call evt = match evt#arg with
             | `KeyDownArg Keys.Enter ->
-                    Stdio.printf "ENTER PRESSED!\n%!";
                     self#updatePath
             | _ -> ()
         end);

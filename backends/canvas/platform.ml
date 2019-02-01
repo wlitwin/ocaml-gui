@@ -14,6 +14,9 @@ module CanvasGraphics = struct
         div##.style##.height := Js.string "100%";
         div
 
+    let global_ctx = ref None
+    let font_map = Hashtbl.Poly.create()
+
     let create () = 
        let doc = Html.window##.document in
        let body = doc##.body in
@@ -25,6 +28,15 @@ module CanvasGraphics = struct
        let c = canvas##getContext Html._2d_ in
        c##.strokeStyle := Js.string "rgb(0, 0, 0, 0)";
        c##.lineWidth := 0.;
+       begin match !global_ctx with
+       | None -> 
+            let elem = Dom_html.createCanvas doc in
+            global_ctx := Some {
+                canvas_elem=elem;
+                canvas=elem##getContext Html._2d_;
+            }
+       | Some _ -> ()
+       end;
        Js.export "cvar" c;
        { canvas=c; canvas_elem=canvas; }
 
@@ -77,6 +89,29 @@ module CanvasGraphics = struct
             ascent;
             descent;
         }
+    ;;
+
+    let measure_text_no_context (font, str) = 
+        let ctx = Option.value_exn !global_ctx in
+        measure_text ctx font str
+    ;;
+
+    let font_extents_no_context (font : Font.t) = 
+        let key = (font.font, font.weight, font.size) in
+        match Hashtbl.Poly.find font_map key with
+        | Some v -> v
+        | None -> 
+            let ctx = Option.value_exn !global_ctx in
+            let metrics = measure_text ctx font "UyQ'!" in
+            let res = Font.{
+                ascent = metrics.ascent;
+                descent = metrics.descent;
+                baseline = (metrics.ascent +. metrics.descent) *. 0.2;
+                max_x_advance = metrics.width *. 0.25;
+                max_y_advance = metrics.ascent +. metrics.descent;
+            } in
+            Hashtbl.Poly.set font_map key res;
+            res
     ;;
 
     let set_font_info cr font_info =
@@ -157,8 +192,8 @@ module Windowing : PlatformSig.WindowingSig = struct
     }
 
     let wrapped_draw context =
-        Dom_html.window##requestAnimationFrame 
-            context.draw_callback
+        (Dom_html.window##requestAnimationFrame 
+            context.draw_callback)
             |> ignore
     ;;
 

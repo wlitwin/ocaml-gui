@@ -356,7 +356,7 @@ module Drawable = struct
 
     let print_tree : type a. (unit * view) t -> unit = function
         | Viewport tree ->
-            Stdio.printf "%s\n%!" (Test_rtree.str_tree tree.index.rtree
+            (*jStdio.printf "%s\n%!" (Test_rtree.str_tree tree.index.rtree
                 (fun (id, Ex obj) -> 
                     Printf.sprintf "%s %d" 
                     (match obj with
@@ -368,7 +368,8 @@ module Drawable = struct
                     (get_common obj).absolute_z_index
                 )
                 (fun (id, Ex obj) -> (get_common obj).bounds)
-            )
+            )*)
+            ()
     ;;
 
     module Rectangle = Rect
@@ -847,11 +848,11 @@ class renderer = object(self)
             let searchTime, drawTime = Util.time (fun _ ->
                 (* Check if there is a FullRefresh, if so, ignore everything else *)
                 if  DynArray.length updates > 50
-                    || DynArray.exists (fun u -> Poly.(u = FullRefresh)) updates then (
+                    || DynArray.exists (fun u -> Poly.(u = FullRefresh)) updates || true then (
                     DynArray.clear updates;
                     DynArray.add updates FullRefresh;
                 );
-                Stdio.printf "Number of updates %d\n%!" (DynArray.length updates);
+                (*Stdio.printf "Number of updates %d\n%!" (DynArray.length updates);*)
                 DynArray.fold_left (fun acc update ->
                     let search_time =  
                         match update with

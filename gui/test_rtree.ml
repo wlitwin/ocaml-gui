@@ -40,8 +40,9 @@ let str_tree tree print bounds =
 ;;
 
 let print_tree tree =
-    Stdio.printf "%s\n%!"
-        (str_tree tree (fun item -> Int.to_string item.id) (fun item -> item.bounds))
+    (*Stdio.printf "%s\n%!"
+        (str_tree tree (fun item -> Int.to_string item.id) (fun item -> item.bounds))*)
+    ()
 ;;
 
 let mk id bounds = {
@@ -141,10 +142,10 @@ let _ =
     insert tree item16;
     insert tree item17;
     insert tree item18;
+    (*Stdio.printf "=====================================\n";
     Stdio.printf "=====================================\n";
     Stdio.printf "=====================================\n";
-    Stdio.printf "=====================================\n";
-    Stdio.printf "=====================================\n\n\n\n%!";
+    Stdio.printf "=====================================\n\n\n\n%!";*)
     delete tree item2;
     delete tree item3;
     delete tree item4;
