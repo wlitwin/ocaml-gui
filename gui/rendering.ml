@@ -82,8 +82,6 @@ type text_list = {
 
 type obj = < >
 
-module Rtree = Rtree2
-
 module SpatialIndex = struct
     module HP = Hashtbl.Poly
 

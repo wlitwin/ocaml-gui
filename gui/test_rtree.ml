@@ -12,7 +12,7 @@ let str_parent = function
     | Some p -> str_of_obj p
 
 let str_node node print calc_bounds =
-    let open Rtree2 in
+    let open Rtree in
     let rec loop : type a b. int -> ((a -> string) * (a -> Rect.t) * (a * b) rtree) -> string = fun idnt ->
         let pad = String.make idnt ' ' in
         function
@@ -35,7 +35,7 @@ let str_node node print calc_bounds =
 ;;
 
 let str_tree tree print bounds =
-        match tree.Rtree2.root with
+        match tree.Rtree.root with
         | Ex root -> str_node root print bounds
 ;;
 
@@ -51,16 +51,16 @@ let mk id bounds = {
 }
 
 let insert tree item =
-    Rtree2.insert (tree, item.bounds, item)
+    Rtree.insert (tree, item.bounds, item)
 ;;
 
 let delete tree item =
-    Rtree2.delete (tree, item.bounds, fun i -> i.id = item.id)
+    Rtree.delete (tree, item.bounds, fun i -> i.id = item.id)
 ;;
 
 (*
 let test1 = 
-    let tree = Rtree2.create() in
+    let tree = Rtree.create() in
     let item1 = mk 0 Rect.{x=0.; y=0.; w=10.; h=10.} in
     let item2 = mk 1 Rect.{x=10.; y=10.; w=10.; h=10.} in
     let item3 = mk 2 Rect.{x=20.; y=20.; w=10.; h=10.} in
@@ -100,7 +100,7 @@ let test1 =
 *)
 
 let _ = 
-    let tree = Rtree2.create() in
+    let tree = Rtree.create() in
     let item1 = mk 0 Rect.{x=0.; y=0.; w=10.; h=10.} in
     let item2 = mk 1 Rect.{x=10.; y=10.; w=10.; h=10.} in
     let item3 = mk 2 Rect.{x=20.; y=20.; w=10.; h=10.} in
