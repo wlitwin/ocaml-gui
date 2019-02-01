@@ -159,9 +159,7 @@ module CanvasGraphics = struct
         context.canvas##rect rect.x rect.y rect.w rect.h
 
     let clip_rect context (rect : Rect.t) =
-        (*context.canvas##rect rect.x rect.y rect.w rect.h;*)
         rectangle context rect;
-        context.canvas##stroke;
         context.canvas##clip
 
     let clip_reset context =

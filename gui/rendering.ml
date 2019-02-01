@@ -387,7 +387,9 @@ module Drawable = struct
             | Fill -> Graphics.fill cr
             | Stroke -> Graphics.stroke cr
 
-    let rec draw : type a. Graphics.context * Rectangle.t * a t -> unit = 
+    let draw (cr, rect, obj) =
+        let search_time = ref 0. in
+        let rec draw : type a. Graphics.context * Rectangle.t * a t -> unit = 
         function
         | cr, _, Text t -> draw_text (cr, t)
         | cr, _, Rect r -> draw_rect (cr, r)
@@ -396,22 +398,23 @@ module Drawable = struct
         | cr, rect, Viewport v -> 
             Graphics.save cr;
             Graphics.clip_rect cr v.v_common.bounds;
-            (*let outer = v.v_common.bounds in
-            let inner = v.inner_bounds in*)
             let translate_x = Float.round (v.v_common.bounds.x -. v.inner_bounds.x) in
             let translate_y = Float.round (v.v_common.bounds.y -. v.inner_bounds.y) in
-            (*Stdio.printf "OFFSET %f %f\n" translate_x translate_y;
-            Stdio.printf "OUTER %f %f %f %f\n" outer.x outer.y outer.w outer.h;
-            Stdio.printf "INNER %f %f %f %f\n%!" inner.x inner.y inner.w inner.h;*)
             Graphics.translate cr translate_x translate_y;
             let search_rect = Rectangle.{rect with x=rect.x -. translate_x; y=rect.y-.translate_y} in
             (*print_tree (Viewport v);*)
-            SpatialIndex.search (v.index, search_rect, v.search_results);
-            Util.dynarray_sort (v.search_results, (fun ((_, Ex item1), (_, Ex item2)) ->
-                (get_common item1).absolute_z_index - (get_common item2).absolute_z_index
-            ));
+            let _, time = Util.time (fun _ ->
+                SpatialIndex.search (v.index, search_rect, v.search_results);
+                Util.dynarray_sort (v.search_results, (fun ((_, Ex item1), (_, Ex item2)) ->
+                    (get_common item1).absolute_z_index - (get_common item2).absolute_z_index
+                ));
+            ) in
+            search_time := !search_time +. time;
             DynArray.iter (fun (_, Ex v) -> draw (cr, rect, v)) v.search_results;
             Graphics.restore cr;
+        in
+        draw (cr, rect, obj);
+        !search_time
 
     module Common = struct
         let set_pos (c, p : common * Pos.t) =
@@ -818,13 +821,12 @@ class renderer = object(self)
         Graphics.set_font_info cr stat_font;
         Graphics.draw_text_ cr Pos.{x=0.; y=size.h -. 2.} text;
 
-    method renderRefresh (cr, rect) =
-        (*Stdio.printf "REFRESH RECT %.2f %.2f %.2f %.2f\n%!" rect.x rect.y rect.w rect.h;*)
+    method renderRefresh (cr, rect : Graphics.context * Rect.t) =
+        (*Caml.print_endline (Printf.sprintf "REFRESH RECT %.2f %.2f %.2f %.2f\n%!" rect.x rect.y rect.w rect.h);*)
+        Graphics.save cr;
         Graphics.clip_rect cr rect;
-        let _, s1 = Util.time (fun _ ->
-            Drawable.draw (cr, rect, root)
-        ) in
-        Graphics.clip_reset cr;
+        let s1 =  Drawable.draw (cr, rect, root) in
+        Graphics.restore cr;
         s1
 
     method renderChanged (cr, old_rect, rect) =
@@ -848,7 +850,7 @@ class renderer = object(self)
             let searchTime, drawTime = Util.time (fun _ ->
                 (* Check if there is a FullRefresh, if so, ignore everything else *)
                 if  DynArray.length updates > 50
-                    || DynArray.exists (fun u -> Poly.(u = FullRefresh)) updates || true then (
+                    || DynArray.exists (fun u -> Poly.(u = FullRefresh)) updates then (
                     DynArray.clear updates;
                     DynArray.add updates FullRefresh;
                 );
