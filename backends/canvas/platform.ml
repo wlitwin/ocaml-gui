@@ -5,6 +5,7 @@ module CanvasGraphics = struct
     type context = {
         canvas : Html.canvasRenderingContext2D Js.t;
         canvas_elem : Html.canvasElement Js.t;
+        dpi : float;
     }
 
     let create_div () =
@@ -17,13 +18,26 @@ module CanvasGraphics = struct
     let global_ctx = ref None
     let font_map = Hashtbl.Poly.create()
 
+    let resize (context, w, h) =
+        let dpi = context.dpi in
+        context.canvas_elem##.width := Float.(of_int w *. dpi |> to_int);
+        context.canvas_elem##.height := Float.(of_int h *. dpi |> to_int);
+        context.canvas_elem##.style##.width := Js.string (Int.to_string w ^ "px");
+        context.canvas_elem##.style##.height := Js.string (Int.to_string h ^ "px");
+    ;;
+
     let create () = 
        let doc = Html.window##.document in
        let body = doc##.body in
        let canvas = Dom_html.createCanvas doc in
        canvas##.id := Js.string "canvas";
-       canvas##.width  := body##.offsetWidth;
-       canvas##.height := body##.offsetHeight;
+       let dpi : float = Js.Unsafe.js_expr "window.devicePixelRatio || 1" in
+       let width = body##.offsetWidth in
+       let height = body##.offsetHeight in
+       canvas##.width  := Float.(of_int width *. dpi |> to_int);
+       canvas##.height := Float.(of_int height *. dpi |> to_int);
+       canvas##.style##.width := Js.string (Int.to_string width ^ "px");
+       canvas##.style##.height := Js.string (Int.to_string height ^ "px");
        Dom.appendChild body canvas;
        let c = canvas##getContext Html._2d_ in
        c##.strokeStyle := Js.string "rgb(0, 0, 0, 0)";
@@ -31,14 +45,16 @@ module CanvasGraphics = struct
        begin match !global_ctx with
        | None -> 
             let elem = Dom_html.createCanvas doc in
+            let ctx = elem##getContext Html._2d_ in
             global_ctx := Some {
                 canvas_elem=elem;
-                canvas=elem##getContext Html._2d_;
+                canvas=ctx;
+                dpi;
             }
        | Some _ -> ()
        end;
        Js.export "cvar" c;
-       { canvas=c; canvas_elem=canvas; }
+       { canvas=c; canvas_elem=canvas; dpi; }
 
     let translate context x y =
         context.canvas##translate x y
@@ -235,9 +251,9 @@ module Windowing : PlatformSig.WindowingSig = struct
                 let doc = Dom_html.window##.document in
                 let body = doc##.body in
                 let w, h = body##.offsetWidth, body##.offsetHeight in
-                context.canvas.canvas_elem##.width := w;
-                context.canvas.canvas_elem##.height := h;
-                context.resize Size.{w=Float.of_int w; h=Float.of_int h};
+                Graphics.resize (context.canvas, w, h);
+                let dpi = context.canvas.dpi in
+                context.resize Size.{w=Float.of_int w *. dpi; h=Float.of_int h *. dpi};
                 wrapped_draw context;
                 Js._true
             );
@@ -256,7 +272,8 @@ module Windowing : PlatformSig.WindowingSig = struct
             );
             let body = body() in
             let w, h = body##.offsetWidth, body##.offsetHeight in
-            context.resize Size.{w=Float.of_int w; h=Float.of_int h};
+            let dpi = context.canvas.dpi in
+            context.resize Size.{w=Float.of_int w *. dpi; h=Float.of_int h *. dpi};
             wrapped_draw context;
             Js._false
         )
