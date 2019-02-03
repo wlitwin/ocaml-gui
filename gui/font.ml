@@ -36,3 +36,4 @@ let default_font = {
     font = "Ubuntu Mono";
     weight = Normal;
 }
+

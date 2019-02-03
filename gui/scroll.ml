@@ -157,7 +157,7 @@ object(self)
         cont#preferredSize
 
     initializer
-        border#setMode Rendering.Stroke;
+        border#setMode DrawTree.Stroke;
         border#setColor Color.black;
         renderObject#removeChild bgRect#obj;
         renderObject#addChild translation#obj;

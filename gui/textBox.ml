@@ -32,7 +32,7 @@ class ['a, 'b] textBoxWidget app = object(self)
     method contentSize = 
         let sz : Size.t = textObject#size in
         if Float.(sz.h = 0.) then
-            Rendering.measure_text (textObject#font, "defaultText")
+            RenderUtils.measure_text (textObject#font, "defaultText")
         else (
             sz
         )
@@ -103,7 +103,7 @@ class ['a, 'b] textBoxWidget app = object(self)
 
     method updateCursor =
         let text = String.sub textObject#text 0 cursorLoc in
-        let size : Size.t = Rendering.measure_text(textObject#font, text) in
+        let size : Size.t = RenderUtils.measure_text(textObject#font, text) in
         cursorObject#setRect Rect.{x=rect.x+.size.w; y=rect.y; w=2.; h=size.h}
 
     method! onFocused =
@@ -122,7 +122,7 @@ class ['a, 'b] textBoxWidget app = object(self)
 
     initializer
         self#setBGColor Color.white;
-        border#setMode Rendering.Stroke;
+        border#setMode DrawTree.Stroke;
         border#setColor Color.black;
         renderObject#addChild border#obj;
         renderObject#addChild textObject#obj;

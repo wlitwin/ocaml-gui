@@ -1,5 +1,4 @@
-type z = Z : z
-type 'n s = S : 'n s
+open GadtUtils
 
 type 'a leaf_rec = {
     mutable l_bounds : Rect.t;
