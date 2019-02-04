@@ -78,6 +78,8 @@ module Constraint = struct
     let leftOf item = relative (ILeft (item :> item))
     let rightOf item = relative (IRight (item :> item))
     let bottomOf item = relative (IBottom (item :> item))
+    let widthOf item = Sub [|IRight (item :> item); ILeft (item :> item)|]
+    let heightOf item = Sub [|IBottom (item :> item); ITop (item :> item)|]
 
     let centerTop toCenter ref = 
         let ref = (ref :> item) in

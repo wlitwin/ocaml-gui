@@ -42,20 +42,23 @@ let array_concat arr =
             let rec loop i =
                 if i >= (*sum then failwith "Impossible"*) Array.length arr then failwith "Impossible"
                 else begin
-                    if Array.length(arr.(i)) > 0 then
+                    if not (Array.is_empty arr.(i)) then (
                         arr.(i).(0)
-                    else loop (i+1)
+                    ) else loop (i+1)
                 end
             in
             loop 0
         in
         let out = Array.create ~len:sum init in
+        let total_arrays = Array.length arr in
         let idx = ref 0 in
-        for i = 0 to sum-1 do
+        for i = 0 to total_arrays-1 do
             let src = arr.(i) in
             let len = Array.length src in
-            Array.blit ~src ~src_pos:0 ~dst:out ~dst_pos:(!idx) ~len;
-            idx := len + !idx
+            if len > 0 then (
+                Array.blit ~src ~src_pos:0 ~dst:out ~dst_pos:(!idx) ~len;
+                idx := len + !idx
+            )
         done;
         out
     end

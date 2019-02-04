@@ -42,6 +42,11 @@ and group_rec = {
     group_children : any_object DynArray.t;
 }
 
+and user_rec = {
+    u_common : common;
+    mutable draw_func : Graphics.context -> unit;
+}
+
 and any_object = Ex : 'a t -> any_object [@@ocaml.boxed]
 
 and parent_object = P : (unit * 'a) t -> parent_object [@@ocaml.boxed]
@@ -50,24 +55,28 @@ and group = group_rec
 and view = view_rec
 and text = text_rec
 and prim = prim_rec
+and user = user_rec
 
 and _ t =
     | Text : text -> text t
     | Rect : prim -> prim t
     | Group : group -> (unit * group) t
     | Viewport : view -> (unit * view) t
+    | User : user -> user t
 
 let get_rect : type a. a t -> Rect.t = function
     | Text t -> t.t_common.bounds
     | Rect r -> r.p_common.bounds
     | Group g -> Rect.empty
     | Viewport v -> v.v_common.bounds
+    | User u -> u.u_common.bounds
 
 let get_common : type a. a t -> common = function
     | Text t -> t.t_common
     | Rect r -> r.p_common
     | Group g -> g.g_common
     | Viewport v -> v.v_common
+    | User u -> u.u_common
 
 let get_id v = (get_common v).id
 
@@ -80,6 +89,7 @@ let delete_from_nearest_viewport : type a. a t -> unit =
                 | Ex (Text _ as text) -> loop (text, parent)
                 | Ex (Rect _ as rect) -> loop (rect, parent)
                 | Ex (Group _ as group) -> loop (group, parent)
+                | Ex (User _ as user) -> loop (user, parent)
                 | Ex (Viewport _ as view) -> loop (view, parent)
             ) g.group_children;
         | c, {parent=Some (P (Viewport v))} ->
@@ -108,6 +118,8 @@ let rec update_z_index : type a. (unit * a) t -> unit =
             t.t_common.absolute_z_index <- t.t_common.relative_z_index + z
         | z, Rect r ->
             r.p_common.absolute_z_index <- r.p_common.relative_z_index + z
+        | z, User u ->
+            u.u_common.absolute_z_index <- u.u_common.relative_z_index + z
         | z, Viewport v ->
             let z = v.v_common.relative_z_index + z in
             v.v_common.absolute_z_index <- z;
@@ -136,6 +148,7 @@ let add_to_nearest_viewport : type a. a t -> unit =
                 | Ex (Text _ as text) -> loop (text, parent)
                 | Ex (Rect _ as rect) -> loop (rect, parent)
                 | Ex (Group _ as group) -> loop (group, parent)
+                | Ex (User _ as user) -> loop (user, parent)
                 | Ex (Viewport _ as view) -> loop (view, parent)
             ) g.group_children;
             (* And need to update this group's index *)
@@ -220,6 +233,7 @@ let set_parent : type a b. a t * (unit * b) t -> unit =
         | Viewport _ as view -> update_z_index view
         | Text t -> t.t_common.absolute_z_index <- calc_z_index c
         | Rect r -> r.p_common.absolute_z_index <- calc_z_index c
+        | User u -> u.u_common.absolute_z_index <- calc_z_index c
 ;;
 
 let unparent : type a. a t -> unit = function
@@ -240,20 +254,20 @@ let common () = {
 
 let print_tree : type a. (unit * view) t -> unit = function
     | Viewport tree ->
-        (*jStdio.printf "%s\n%!" (Test_rtree.str_tree tree.index.rtree
+        Stdio.printf "%s\n%!" (Test_rtree.str_tree tree.index.rtree
             (fun (id, Ex obj) -> 
                 Printf.sprintf "%s %d" 
                 (match obj with
                 | Rect _ -> "rect"
                 | Text t -> "text[" ^ t.text ^ "]"
                 | Group _ -> "group"
+                | User _ -> "user"
                 | Viewport _ -> "view"
                 )
                 (get_common obj).absolute_z_index
             )
             (fun (id, Ex obj) -> (get_common obj).bounds)
-        )*)
-        ()
+        )
 ;;
 
 module Rectangle = Rect
@@ -277,6 +291,7 @@ let draw (cr, rect, obj) =
     function
     | cr, _, Text t -> draw_text (cr, t)
     | cr, _, Rect r -> draw_rect (cr, r)
+    | cr, _, User u -> u.draw_func cr
     | cr, rect, Group g ->
         DynArray.iter (fun (Ex v) -> draw (cr, rect, v)) g.group_children
     | cr, rect, Viewport v -> 
@@ -318,6 +333,7 @@ let rec str_tree : type a. a t -> string = function
         let rec loop : type a. a t * int -> string = function
             | Rect r, idnt -> Printf.sprintf "%srect %d (%d) [%d]\n" (pad idnt) r.p_common.absolute_z_index r.p_common.relative_z_index (calc_z_index (Rect r))
             | Text t, idnt -> Printf.sprintf "%stext %s %d (%d) [%d]\n" (pad idnt) t.text t.t_common.absolute_z_index t.t_common.relative_z_index (calc_z_index (Text t))
+            | User u, idnt -> Printf.sprintf "%suser %d (%d) [%d]\n" (pad idnt) u.u_common.absolute_z_index u.u_common.relative_z_index (calc_z_index (User u))
             | Group g, idnt ->
                 Printf.sprintf "%sgroup %d (%d) [%d]\n%s" (pad idnt) g.g_common.absolute_z_index g.g_common.relative_z_index (calc_z_index (Group g))
                 (DynArray.fold_left (fun acc (Ex obj) ->
@@ -438,6 +454,43 @@ module Text = struct
         | Text t as text, z_index ->
             t.t_common.relative_z_index <- z_index;
             t.t_common.absolute_z_index <- calc_z_index text;
+    ;;
+end
+
+module User = struct
+    let create () = User {
+        u_common=common();
+        draw_func=ignore;
+    }
+
+    let set_func : user t * (Graphics.context -> unit) -> unit = function
+        | User u, f -> u.draw_func <- f;
+    ;;
+
+    let update : user t -> unit = function
+        | User _ as user -> update user
+    ;;
+
+    let get_bounds : user t -> Rectangle.t = function
+        | User u -> u.u_common.bounds
+    ;;
+
+    let set_pos : user t * Pos.t -> unit = function
+        | User u as u_tag, pos -> 
+            Common.set_pos (u.u_common, pos);
+            update u_tag;
+    ;;
+
+    let set_bounds : user t * Rectangle.t -> unit = function
+        | User u as u_tag, r -> 
+            u.u_common.bounds <- r;
+            update u_tag;
+    ;;
+
+    let set_z_index : user t * int -> unit = function
+        | User u as user, z_index ->
+            u.u_common.relative_z_index <- z_index;
+            u.u_common.absolute_z_index <- calc_z_index user;
     ;;
 end
 

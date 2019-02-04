@@ -15,7 +15,7 @@ let create_strings =
         if n <= 0 then acc
         else f (build_str() :: acc) (n - 1)
     in
-    "0000000000000000000000000000000001" :: f [] 1000
+    "ぁ0000000000000000000000000000000001" :: f [] 1000
 ;;
 
 let readDir app path =
@@ -29,10 +29,45 @@ let readDir app path =
         [new Label.label app ~text:("Invalid path: " ^ path)]
 ;;
 
+module Graphics = Platform.Windowing.Graphics
+
+class ['a, 'b] hexObject app = object(self)
+    inherit ['a, 'b] Widget.basicWidget app as super
+
+    val hexObj = app#renderer#createUserObject
+
+    method! onResize (r : Rect.t) : unit =
+        super#onResize r;
+        hexObj#setBounds r;
+
+    initializer
+        hexObj#setZIndex 1;
+        hexObj#setFunc (fun cr ->
+            Graphics.set_color cr Color.red;
+            Graphics.rectangle cr rect;
+            Graphics.fill cr;
+            let s60 = 0.86602540378
+            and c60 = 0.5 in
+            Graphics.set_color cr Color.black;
+            let cx = rect.x +. rect.w*.0.5
+            and cy = rect.y +. rect.h*.0.5
+            and r = rect.w*.0.5 in
+            Graphics.move_to cr (cx+.r*.c60) (cy+.r*.s60);
+            Graphics.line_to cr (cx+.r) cy;
+            Graphics.line_to cr (cx+.r*.c60) (cy-.r*.s60);
+            Graphics.line_to cr (cx-.r*.c60) (cy-.r*.s60);
+            Graphics.line_to cr (cx-.r) (cy);
+            Graphics.line_to cr (cx-.r*.c60) (cy+.r*.s60);
+            Graphics.fill cr;
+        );
+        renderObject#addChild hexObj#obj;
+end
+
 class ['a, 'b] fileBrowser app =
     let lblPath = new Label.label app ~text:"Path" in
     let txtPath = new TextBox.textBoxWidget app in
     let fileList = new ListBox.listBox app in
+    let hexObj = new hexObject app in
     let scroll = new Scroll.scrollArea app (fileList :> ('a, 'b) Widget.basicWidget) in
 object(self)
     inherit ['a, 'b] Widget.basicWidget app as super
@@ -62,6 +97,7 @@ object(self)
         let lPath = cl lblPath in
         let tPath = cl txtPath in
         let lScroll = cl scroll in
+        let lCustom = cl hexObj in
         let from_bot = ConstraintLayout.(Constraint.(Add [|
             wBottom ~-.50.;
             (*Mul [| Const ~-.1.; preferredH txtPath |]*)
@@ -70,7 +106,10 @@ object(self)
             {input_item=tPath; input_loc={top=from_bot; left=rightOf lPath 10.; right=wRight ~-.10.; bottom=preferredH txtPath}};
             {input_item=lPath; 
              input_loc={top=centerTop lPath tPath; left=wLeft 10.; bottom=preferredH lblPath; right=preferredW lblPath}};
-            {input_item=lScroll; input_loc={top=wTop 0.; left=wLeft 0.; right=wRight 0.; bottom=topOf tPath ~-.10.}};
+            {input_item=lCustom; input_loc={top=wTop 10.; left=wLeft 10.;
+                    right=Mul [|wBottom 0.; Const 0.15|];
+                    bottom=Add [|ITop (lCustom :> item); widthOf lCustom|]}};
+            {input_item=lScroll; input_loc={top=bottomOf lCustom 10.; left=wLeft 0.; right=wRight 0.; bottom=topOf tPath ~-.10.}};
         ])) in
         let layout = new ConstraintLayout.constraintLayout rules app#renderer in
         self#setLayout (layout :> ('a, 'b) Layout.layout);

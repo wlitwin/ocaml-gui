@@ -71,6 +71,38 @@ class viewportObject render = object
         )
 end
 
+class userObject render = object
+    val user = DrawTree.User.create()
+    val mutable id = ""
+
+    method obj = DrawTree.Ex user
+
+    method setId i = id <- i
+
+    method setPos (pos : Pos.t) : unit =
+        let before = DrawTree.User.get_bounds user in
+        if not (Pos.equal (pos, Pos.{x=before.x; y=before.y})) then (
+            DrawTree.User.set_pos (user, pos);
+            let after = DrawTree.User.get_bounds user in
+            render#refreshChanged (before, after)
+        )
+
+    method setZIndex (z : int) : unit =
+        DrawTree.User.set_z_index (user, z);
+        render#refreshSingle (DrawTree.User.get_bounds user);
+
+    method setFunc (fn : Graphics.context -> unit) =
+        DrawTree.User.set_func (user, fn)
+
+    method setBounds (r : Rect.t) : unit =
+        let before = DrawTree.User.get_bounds user in
+        if not (Rect.equal(before, r)) then (
+            DrawTree.User.set_bounds (user, r);
+            let after = DrawTree.User.get_bounds user in
+            render#refreshChanged (before, after);
+        )
+end
+
 class rectObject render = object
     val rect = DrawTree.Rect.create()
     val mutable id = ""
@@ -147,6 +179,7 @@ class renderer = object(self)
     method createRectObject = new rectObject self
     method createTextObject = new textObject self
     method createViewportObject = new viewportObject self 
+    method createUserObject = new userObject self
 
     method fontExtents (font : Font.t) : Font.font_extents =
         Graphics.font_extents_no_context font
@@ -239,7 +272,7 @@ class renderer = object(self)
             Graphics.fill cr;
         in*)
         if drawEnabled && DynArray.length updates > 0 then begin
-            (*DrawTree.print_tree root;*)
+            DrawTree.print_tree root;
             (*Caml.print_endline (DrawTree.str_tree root);*)
             let searchTime, drawTime = Util.time (fun _ ->
                 (* Check if there is a FullRefresh, if so, ignore everything else *)
