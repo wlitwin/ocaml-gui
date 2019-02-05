@@ -15,7 +15,7 @@ let create_strings =
         if n <= 0 then acc
         else f (build_str() :: acc) (n - 1)
     in
-    "ぁ0000000000000000000000000000000001" :: f [] 1000
+    "0000000000000000000000000000000001" :: f [] 10
 ;;
 
 let readDir app path =
@@ -43,22 +43,56 @@ class ['a, 'b] hexObject app = object(self)
     initializer
         hexObj#setZIndex 1;
         hexObj#setFunc (fun cr ->
-            Graphics.set_color cr Color.red;
+            Graphics.save cr;
+            Graphics.clip_rect cr rect;
+            Graphics.set_color cr Color.white;
             Graphics.rectangle cr rect;
             Graphics.fill cr;
-            let s60 = 0.86602540378
+
+            let s60 = 0.8660254037844386
             and c60 = 0.5 in
-            Graphics.set_color cr Color.black;
-            let cx = rect.x +. rect.w*.0.5
-            and cy = rect.y +. rect.h*.0.5
-            and r = rect.w*.0.5 in
-            Graphics.move_to cr (cx+.r*.c60) (cy+.r*.s60);
-            Graphics.line_to cr (cx+.r) cy;
-            Graphics.line_to cr (cx+.r*.c60) (cy-.r*.s60);
-            Graphics.line_to cr (cx-.r*.c60) (cy-.r*.s60);
-            Graphics.line_to cr (cx-.r) (cy);
-            Graphics.line_to cr (cx-.r*.c60) (cy+.r*.s60);
-            Graphics.fill cr;
+            let count = 5 in
+            let r_count = 1.5 *. Float.(of_int count) +. 0.5 in
+            let r = rect.w /. r_count in
+            let max_rows = Float.(round_down (rect.h /. (r *. 1.5)) |> to_int) - 1 in
+            let sz = r in
+            let draw_hex (cx, cy, c) =
+                let angX1 = 0.5
+                and angY1 = 0.8660254037844386
+                and angX2 = -0.5
+                and angX3 = -1.0
+                and angX4 = -0.5
+                and angX5 = 0.5
+                and angX6 = 1.0
+                and angY2 = 0.8660254037844387
+                and angY3 = 0.
+                and angY4 = -0.8660254037844384
+                and angY5 = -0.8660254037844386
+                and angY6 = 0. in
+                Graphics.set_color cr c;
+                Graphics.move_to cr (cx+.angX1*.sz) (cy+.angY1*.sz);
+                Graphics.line_to cr (cx+.angX2*.sz) (cy+.angY2*.sz);
+                Graphics.line_to cr (cx+.angX3*.sz) (cy+.angY3*.sz);
+                Graphics.line_to cr (cx+.angX4*.sz) (cy+.angY4*.sz);
+                Graphics.line_to cr (cx+.angX5*.sz) (cy+.angY5*.sz);
+                Graphics.line_to cr (cx+.angX6*.sz) (cy+.angY6*.sz);
+                Graphics.fill cr;
+            in
+            let cx = rect.x +. r
+            and cy = rect.y +. r -. (1.0 -. s60)*.r in
+            let gray = Color.{r=0.3; g=0.3; b=0.3; a=1.0} in
+            for y=0 to max_rows-1 do
+                let y_off = Float.(of_int y * 2. * r * s60) in
+                for x=0 to count-1 do
+                    let x_f = Float.of_int x in
+                    if Int.(rem x 2 = 0) then (
+                        draw_hex (cx+.1.5*.r*.x_f, cy +. y_off, gray);
+                    ) else (
+                        draw_hex (cx+.r*.1.5*.x_f, cy+.r*.s60 +. y_off, Color.orange);
+                    )
+                done;
+            done;
+            Graphics.restore cr;
         );
         renderObject#addChild hexObj#obj;
 end
@@ -107,9 +141,9 @@ object(self)
             {input_item=lPath; 
              input_loc={top=centerTop lPath tPath; left=wLeft 10.; bottom=preferredH lblPath; right=preferredW lblPath}};
             {input_item=lCustom; input_loc={top=wTop 10.; left=wLeft 10.;
-                    right=Mul [|wBottom 0.; Const 0.15|];
+                    right=Mul [|wBottom 0.; Const 0.5|];
                     bottom=Add [|ITop (lCustom :> item); widthOf lCustom|]}};
-            {input_item=lScroll; input_loc={top=bottomOf lCustom 10.; left=wLeft 0.; right=wRight 0.; bottom=topOf tPath ~-.10.}};
+            {input_item=lScroll; input_loc={top=Mul [|wBottom 0.; Const 0.5|]; left=wLeft 0.; right=wRight 0.; bottom=topOf tPath ~-.10.}};
         ])) in
         let layout = new ConstraintLayout.constraintLayout rules app#renderer in
         self#setLayout (layout :> ('a, 'b) Layout.layout);
