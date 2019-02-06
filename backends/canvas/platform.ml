@@ -161,6 +161,12 @@ module CanvasGraphics = struct
     let move_to context x y =
         context.canvas##moveTo x y
 
+    let beginPath context =
+        context.canvas##beginPath
+
+    let closePath context =
+        context.canvas##closePath
+
     let line_to context x y =
         context.canvas##lineTo x y
 

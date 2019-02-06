@@ -31,14 +31,23 @@ let readDir app path =
 
 module Graphics = Platform.Windowing.Graphics
 
-class ['a, 'b] hexObject app = object(self)
+class ['a, 'b] hexObject app = 
+    let s60 = 0.8660254037844386
+    and c60 = 0.5 in
+    let count = 5 in
+object(self)
     inherit ['a, 'b] Widget.basicWidget app as super
 
     val hexObj = app#renderer#createUserObject
+    val mutable index = 0
 
     method! onResize (r : Rect.t) : unit =
         super#onResize r;
         hexObj#setBounds r;
+
+    method! onKeyDown (key : Keys.key) : unit =
+        index <- Int.rem (index + 1) count;
+        hexObj#redraw
 
     initializer
         hexObj#setZIndex 1;
@@ -49,33 +58,23 @@ class ['a, 'b] hexObject app = object(self)
             Graphics.rectangle cr rect;
             Graphics.fill cr;
 
-            let s60 = 0.8660254037844386
-            and c60 = 0.5 in
-            let count = 5 in
             let r_count = 1.5 *. Float.(of_int count) +. 0.5 in
-            let r = rect.w /. r_count in
+            let r = Float.round_down (rect.w /. r_count) in
             let max_rows = Float.(round_down (rect.h /. (r *. 1.5)) |> to_int) - 1 in
             let sz = r in
+            let rounded f x y = f cr Float.(round_down x) Float.(round_down y) in
+            let line_to_rnd = rounded Graphics.line_to in
+            let move_to_rnd = rounded Graphics.move_to in
             let draw_hex (cx, cy, c) =
-                let angX1 = 0.5
-                and angY1 = 0.8660254037844386
-                and angX2 = -0.5
-                and angX3 = -1.0
-                and angX4 = -0.5
-                and angX5 = 0.5
-                and angX6 = 1.0
-                and angY2 = 0.8660254037844387
-                and angY3 = 0.
-                and angY4 = -0.8660254037844384
-                and angY5 = -0.8660254037844386
-                and angY6 = 0. in
                 Graphics.set_color cr c;
-                Graphics.move_to cr (cx+.angX1*.sz) (cy+.angY1*.sz);
-                Graphics.line_to cr (cx+.angX2*.sz) (cy+.angY2*.sz);
-                Graphics.line_to cr (cx+.angX3*.sz) (cy+.angY3*.sz);
-                Graphics.line_to cr (cx+.angX4*.sz) (cy+.angY4*.sz);
-                Graphics.line_to cr (cx+.angX5*.sz) (cy+.angY5*.sz);
-                Graphics.line_to cr (cx+.angX6*.sz) (cy+.angY6*.sz);
+                Graphics.beginPath cr;
+                move_to_rnd (cx+.c60*.sz) (cy+.s60*.sz);
+                line_to_rnd (cx-.c60*.sz) (cy+.s60*.sz);
+                line_to_rnd (cx-.sz) cy;
+                line_to_rnd (cx-.c60*.sz) (cy-.s60*.sz);
+                line_to_rnd (cx+.c60*.sz) (cy-.s60*.sz);
+                line_to_rnd (cx+.sz) (cy);
+                Graphics.closePath cr;
                 Graphics.fill cr;
             in
             let cx = rect.x +. r
@@ -85,10 +84,11 @@ class ['a, 'b] hexObject app = object(self)
                 let y_off = Float.(of_int y * 2. * r * s60) in
                 for x=0 to count-1 do
                     let x_f = Float.of_int x in
+                    let color = if (x = index) then Color.orange else gray in
                     if Int.(rem x 2 = 0) then (
-                        draw_hex (cx+.1.5*.r*.x_f, cy +. y_off, gray);
+                        draw_hex (cx+.1.5*.r*.x_f, cy +. y_off, color);
                     ) else (
-                        draw_hex (cx+.r*.1.5*.x_f, cy+.r*.s60 +. y_off, Color.orange);
+                        draw_hex (cx+.r*.1.5*.x_f, cy+.r*.s60 +. y_off, color);
                     )
                 done;
             done;
@@ -150,5 +150,6 @@ object(self)
         (*layout#renderObject#setZIndex 2;*)
 
     inherit ['a, 'b] Focusable.focusManager app [(txtPath :> ('a, 'b) HandlesEvent.handles_event);
-                                                 (scroll :> ('a, 'b) HandlesEvent.handles_event)]
+                                                 (scroll :> ('a, 'b) HandlesEvent.handles_event);
+                                                 (hexObj :> ('a, 'b) HandlesEvent.handles_event)]
 end

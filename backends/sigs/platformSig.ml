@@ -31,6 +31,8 @@ module type GraphicsSig = sig
     val line_to : context -> float -> float -> unit
     val stroke : context -> unit
     val fill : context -> unit
+    val beginPath : context -> unit
+    val closePath : context -> unit
 
     val translate : context -> float -> float -> unit
     val identity_transform : context -> unit

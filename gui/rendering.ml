@@ -87,6 +87,9 @@ class userObject render = object
             render#refreshChanged (before, after)
         )
 
+    method redraw : unit =
+        render#refreshSingle (DrawTree.User.get_bounds user);
+
     method setZIndex (z : int) : unit =
         DrawTree.User.set_z_index (user, z);
         render#refreshSingle (DrawTree.User.get_bounds user);
@@ -272,7 +275,7 @@ class renderer = object(self)
             Graphics.fill cr;
         in*)
         if drawEnabled && DynArray.length updates > 0 then begin
-            DrawTree.print_tree root;
+            (*DrawTree.print_tree root;*)
             (*Caml.print_endline (DrawTree.str_tree root);*)
             let searchTime, drawTime = Util.time (fun _ ->
                 (* Check if there is a FullRefresh, if so, ignore everything else *)

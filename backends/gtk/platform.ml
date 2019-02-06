@@ -24,6 +24,12 @@ module CairoGraphics = struct
     let stroke = Cairo.stroke
     let fill = Cairo.fill
 
+    let beginPath cr =
+        Cairo.Path.clear cr
+
+    let closePath cr =
+        Cairo.Path.close cr
+
     let font_weight_to_cairo = function 
         | Font.Normal -> Cairo.Normal
         | Font.Bold -> Cairo.Bold
