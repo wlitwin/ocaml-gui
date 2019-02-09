@@ -1,4 +1,5 @@
 module R = Rendering
+module E = Ev
 
 let coerce (v : ('a, 'b) #Widget.basicWidget) =
     (v :> ('a, 'b) Widget.basicWidget)
@@ -11,8 +12,9 @@ let _ =
         (*let mainWidget = new Demo.main app in*)
         app#renderer#ignoreUpdates (fun _ ->
             (*let mainWidget = new Simple2.simple2 app in*)
-            let mainWidget = new FileBrowser.fileBrowser app in
+            (*let mainWidget = new FileBrowser.fileBrowser app in*)
             (*let mainWidget = new Simple.simple app in*)
+            let mainWidget = new Alien.game app in
             app#setWidget (coerce mainWidget);
         );
         app#main
