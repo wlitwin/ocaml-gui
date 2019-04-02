@@ -2,7 +2,7 @@
 
 OCAMLBUILD = ocamlbuild -use-ocamlfind
 
-PKGS=cairo2,cairo2.lablgtk2,lablgtk2,base,core
+PKGS=cairo2,cairo2-gtk,lablgtk2,base,core
 #,ocamlgraph,ocamlgraph.dgraph
 JS_PKGS=base,js_of_ocaml,js_of_ocaml-ocamlbuild,js_of_ocaml-ppx
 
