@@ -1,4 +1,4 @@
-type item = {
+(*type item = {
     id : int;
     bounds : Rect.t;
 }
@@ -167,3 +167,4 @@ let _ =
     insert tree item1;
     insert tree item2;
     print_tree tree;
+    *)

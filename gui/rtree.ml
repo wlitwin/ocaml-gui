@@ -297,7 +297,6 @@ let insert = function
                 bounds = Rect.union left.bounds right.bounds;
              children = DynArray.of_list [Ex (RLeaf left); Ex (RLeaf right)]
         }));
-        (*check_depths ("insert_leaf", tree);*)
     | Ex node ->
         begin match choose_leaf (node, rect) with
         | path, (RLeaf data as node) ->
@@ -308,10 +307,8 @@ let insert = function
                 let left, right = split_node node in
                 let new_root = adjust_tree (path, left, right) in
                 tree.root <- Ex new_root;
-                (*check_depths ("insert_node_split", tree);*)
             ) else (
                 propagate_bounds_upward (path, data.bounds);
-                (*check_depths ("insert_node_prop", tree);*)
             )
         end;
 ;;
@@ -422,7 +419,6 @@ let insert_elim : type a. a t * (int * a any_tree) list -> unit = function
                 let rec loop = function
                     | _, Ex (RLeaf _) -> raise Impossible_Insert_Elim
                     | cur_depth, Ex (RNode p) ->
-                        (*Stdio.printf "CD %d\n" cur_depth;*)
                         if cur_depth = d then (
                             update_node_bounds (RNode n); 
                             DynArray.add p.children (Ex (RNode n));
@@ -435,11 +431,6 @@ let insert_elim : type a. a t * (int * a any_tree) list -> unit = function
                 in
                 loop (1, tree.root)
         in
- (*       Stdio.printf "T DEPTH %d\n" depth;
-        List.iteri elim (fun idx (d, Ex elim) ->
-            Stdio.printf "ELIM %d [%d]\n" idx d;
-            ptree (1, elim);
-        );*)
         List.iter elim add
 ;;
 
@@ -479,20 +470,9 @@ let condense_tree : type a. a t * a index_list * (a * z) rtree -> unit = functio
 let delete : 'a t * Rect.t * ('a -> bool) -> unit = function
 | tree, rect, pred ->
     let Ex root = tree.root in
-    (*let size_before = size tree in*)
-    (*Stdio.printf "==================\n%!";
-    ptree (0, root);*)
     match find_leaf (root, rect, pred) with
     | None -> ()
     | Some (idx, path, (RLeaf l as leaf)) ->
         DynArray.delete l.data idx;
         condense_tree (tree, path, leaf);
-        (*let size_after = size tree in
-        (*Stdio.printf "BEFORE %d AFTER %d\n" size_before size_after;*)
-        let Ex root = tree.root in
-        (*Stdio.printf "==================\n%!";
-        ptree (0, root);*)
-        (*check_depths ("delete", tree);
-        assert (size_before - size_after <= 1);*)
-        *)
 ;;

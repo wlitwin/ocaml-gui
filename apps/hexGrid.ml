@@ -26,6 +26,10 @@ object(self)
         Size.{w=radius*.(1.5*.dx+.0.5);
               h=radius*.(s60*. (2.*.dy +. 1.))}
 
+    method aspectRatio =
+        let sz = self#preferredSize in
+        sz.w /. sz.h
+
     method! onResize (r : Rect.t) : unit =
         super#onResize r;
         hexObj#setBounds r;

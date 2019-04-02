@@ -252,6 +252,7 @@ let common () = {
     absolute_z_index=0;
 }
 
+(*
 let print_tree : type a. (unit * view) t -> unit = function
     | Viewport tree ->
         Caml.print_endline (Printf.sprintf "%s\n%!" (Test_rtree.str_tree tree.index.rtree
@@ -269,6 +270,7 @@ let print_tree : type a. (unit * view) t -> unit = function
             (fun (id, Ex obj) -> (get_common obj).bounds)
         ))
 ;;
+*)
 
 module Rectangle = Rect
 
